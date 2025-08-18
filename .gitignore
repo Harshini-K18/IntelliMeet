@@ -1,0 +1,53 @@
+# ======================
+# Python
+# ======================
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+.eggs/
+
+# ======================
+# Virtual Environment
+# ======================
+venv/
+.env/
+.venv/
+env/
+ENV/
+
+# ======================
+# IDE / Editor
+# ======================
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# ======================
+# Logs & Cache
+# ======================
+*.log
+*.sqlite3
+.cache/
+pytest_cache/
+.coverage
+htmlcov/
+
+# ======================
+# Models / Large Files
+# ======================
+*.pt
+*.bin
+*.ckpt
+*.h5
+*.onnx
+
+# ======================
+# Config
+# ======================
+.env.local
+.env.*.local
