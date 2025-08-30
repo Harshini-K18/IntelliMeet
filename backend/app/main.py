@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
-from app.api.v1 import meetings, mom, analytics, transcripts
+from app.api.v1 import meetings, mom, analytics, transcripts, recorder
 from app.db.mongo import get_mongo
 
 
@@ -37,3 +37,4 @@ app.include_router(meetings.router, prefix=f"{settings.API_V1_STR}/meetings", ta
 app.include_router(transcripts.router, prefix=f"{settings.API_V1_STR}/transcripts", tags=["transcripts"])
 app.include_router(mom.router, prefix=f"{settings.API_V1_STR}/mom", tags=["mom"])
 app.include_router(analytics.router, prefix=f"{settings.API_V1_STR}/analytics", tags=["analytics"])
+app.include_router(recorder.router, prefix=f"{settings.API_V1_STR}/recorder", tags=["recorder"])

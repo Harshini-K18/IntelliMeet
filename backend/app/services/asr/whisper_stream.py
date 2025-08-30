@@ -31,3 +31,20 @@ def transcribe_file(file_bytes: bytes, language: str | None = None):
         }
     finally:
         os.remove(tmp_path)
+
+def transcribe(filepath: str, language: str | None = None):
+    """
+    Transcribe an audio file from a file path.
+    Returns: dict with segments [{start, end, text}], language, full_text
+    """
+    model = _load_model()
+    res = model.transcribe(filepath, language=language)
+    segments = [
+        {"start": float(s["start"]), "end": float(s["end"]), "text": s["text"].strip()}
+        for s in res.get("segments", [])
+    ]
+    return {
+        "language": res.get("language"),
+        "text": res.get("text", "").strip(),
+        "segments": segments
+    }
