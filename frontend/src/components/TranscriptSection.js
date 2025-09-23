@@ -1,5 +1,6 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { ArrowDownTrayIcon } from "@heroicons/react/24/outline";
+import { io } from "socket.io-client";
 import { formatTimestamp } from "../utils/formatTimestamp";
 
 const TranscriptSection = ({
@@ -8,6 +9,21 @@ const TranscriptSection = ({
   handleDownloadTranscript,
   handleClearTranscript,
 }) => {
+  const [notes, setNotes] = useState([]);
+
+  // Socket for notes
+  useEffect(() => {
+    const socket = io("http://localhost:3001");
+
+    socket.on("notes", (data) => {
+      if (data && data.notes && data.notes.trim() !== "") {
+        setNotes((prev) => [...prev, data]);
+      }
+    });
+
+    return () => socket.disconnect();
+  }, []);
+
   return (
     <div className="my-8">
       <div className="flex justify-between items-center mb-4">
@@ -30,6 +46,7 @@ const TranscriptSection = ({
           </button>
         </div>
       </div>
+
       <div
         ref={transcriptContainerRef}
         className="bg-white dark:bg-gray-800 shadow-md rounded-lg p-6 max-h-96 overflow-y-auto"
@@ -47,11 +64,12 @@ const TranscriptSection = ({
               <span className="text-gray-100">
                 [{formatTimestamp(t.timestamp)}] {t.speaker}:{" "}
               </span>
-              <span className="text-gray-100 dark:text-white ">{t.text}</span>
+              <span className="text-gray-100 dark:text-white">{t.text}</span>
             </div>
           ))
         )}
       </div>
+
       <div className="flex justify-end mt-4">
         <button
           onClick={handleClearTranscript}
@@ -65,6 +83,32 @@ const TranscriptSection = ({
         >
           Clear Transcript
         </button>
+      </div>
+
+      {/* Important Notes Section */}
+      <div className="mt-8">
+        <h2 className="text-xl font-medium text-gray-900 dark:text-white text-center mb-4">
+          Important Notes
+        </h2>
+        {notes.length === 0 ? (
+          <p className="text-gray-500 dark:text-gray-400 text-center">
+            No notes yet...
+          </p>
+        ) : (
+          <ul className="space-y-2">
+            {notes.map((n, index) => (
+              <li
+                key={index}
+                className="bg-gray-100 dark:bg-gray-700 p-4 rounded-lg shadow-md"
+              >
+                <strong className="block text-gray-900 dark:text-white">
+                  {n.speaker}:
+                </strong>
+                <span className="text-gray-700 dark:text-gray-300">{n.notes}</span>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </div>
   );

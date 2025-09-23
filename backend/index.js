@@ -3,6 +3,7 @@ const express = require("express");
 const axios = require("axios");
 const { Server } = require("socket.io");
 const cors = require("cors");
+const { takenotes } = require("./utils/takenotes"); // your notes generator
 
 const app = express();
 const server = require("http").createServer(app);
@@ -13,7 +14,7 @@ const io = new Server(server, {
 app.use(express.json());
 app.use(cors());
 
-// Single Axios instance for Recall.ai API
+// Axios instance for Recall.ai API
 const recall = axios.create({
   baseURL: "https://us-west-2.recall.ai/api/v1",
   headers: {
@@ -62,10 +63,20 @@ app.post("/webhook/transcription", (req, res) => {
     text: transcriptData.words.map((w) => w.text).join(" "),
     timestamp: transcriptData.words[0].start_timestamp?.relative || 0,
   };
+
+  // Emit transcript to frontend (original behavior)
   io.emit("transcript", transcript);
+
+  // Generate and emit notes if any
+  const notes = takenotes(transcript.text);
+  if (notes && notes.length > 0) {
+    io.emit("notes", { speaker: transcript.speaker, notes });
+  }
+
   res.status(200).json({});
 });
 
+// Start server
 server.listen(process.env.PORT || 3001, () => {
   console.log("Server running on port 3001");
 });

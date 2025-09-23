@@ -4,15 +4,15 @@ const Footer = () => {
   return (
     <footer className="absolute bottom-0 w-full flex flex-col text-center py-6 text-sm text-gray-900 dark:text-white">
       <a
-        href="https://middlekid.io/"
+        /*href="https://middlekid.io/" 
         target="_blank"
         rel="noreferrer"
-        className="font-semibold mb-2 text-blue-600 dark:text-yellow-500 hover:text-blue-700 dark:hover:text-yellow-600 hover:underline transition-colors duration-200"
+        className="font-semibold mb-2 text-blue-600 dark:text-yellow-500 hover:text-blue-700 dark:hover:text-yellow-600 hover:underline transition-colors duration-200" */
       >
-        Harshini K
+        Developed by: Harshini K , Prerana G, Pragnya R
       </a>
       <a
-        href="https://github.com/Prerana-G/IntelliMeet-transcriber"
+        href="https://github.com/Harshini-K18/IntelliMeet-2.0"
         target="_blank"
         rel="noreferrer"
         className="text-blue-600 dark:text-yellow-500 hover:text-blue-700 dark:hover:text-yellow-600 hover:underline transition-colors duration-200"
