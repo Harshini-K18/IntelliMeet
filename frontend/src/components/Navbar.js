@@ -3,7 +3,7 @@ import { SunIcon, MoonIcon } from "@heroicons/react/24/outline";
 
 const Navbar = ({ darkMode, toggleDarkMode }) => {
   return (
-    <nav className="shadow-sm">
+    <nav className={`shadow-sm ${darkMode ? 'bg-primary' : 'bg-light'}`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           <div className="flex items-center">
@@ -34,7 +34,7 @@ const Navbar = ({ darkMode, toggleDarkMode }) => {
               className="flex mr-4"
               rel="noreferrer"
             >
-              <div className="text-gray-900 dark:text-white">
+              <div className={darkMode ? 'text-light' : 'text-primary'}>
                 <p>API Docs</p>
               </div>
               {darkMode ? (
@@ -53,11 +53,11 @@ const Navbar = ({ darkMode, toggleDarkMode }) => {
             </a>
             <button
               onClick={toggleDarkMode}
-              className={`${
+              className={`p-2 rounded-full focus:outline-none transition-colors duration-300 ${
                 darkMode
-                  ? "bg-blue-800 dark:hover:bg-blue-900 text-white"
-                  : "bg-yellow-400 hover:bg-yellow-500 text-black"
-              } p-2 rounded-full focus:outline-none transition-colors duration-300`}
+                  ? "bg-secondary hover:bg-accent text-light"
+                  : "bg-accent hover:bg-secondary text-primary"
+              }`}
               aria-label="Toggle dark mode"
             >
               {darkMode ? (

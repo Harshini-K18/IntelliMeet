@@ -6,11 +6,13 @@ import InputSection from "./components/InputSection";
 import StatusMessage from "./components/StatusMessage";
 import TranscriptSection from "./components/TranscriptSection";
 import Footer from "./components/Footer";
+import MomSection from "./components/momsection";
 import { handleDownloadTranscript } from "./utils/downloadTranscript";
+import SummarySection from "./components/SummarySection";
 
 const socket = io("http://localhost:3001");
 
-function App() {
+const App = () => {
   const [meetingUrl, setMeetingUrl] = useState("");
   const [transcripts, setTranscripts] = useState([]);
   const [status, setStatus] = useState("");
@@ -54,7 +56,7 @@ function App() {
   // Deploy bot
   const handleDeployBot = async () => {
     if (!meetingUrl) {
-      setStatus("Please enter a valid Google Meet URL");
+      setStatus("Please enter a valid Meeting URL");
       return;
     }
     setStatus("Deploying bot...");
@@ -75,6 +77,7 @@ function App() {
       setTranscripts([]);
     }
   };
+  
 
   // Copy bot ID to clipboard
   const handleCopyBotId = () => {
@@ -84,17 +87,20 @@ function App() {
     setTimeout(() => setIsCopied(false), 1000);
   };
 
-  return (
+    return (
     <div
       className={`relative min-h-screen ${
-        darkMode ? "dark bg-gray-900" : "bg-gray-100"
+        darkMode ? "dark bg-primary text-light" : "bg-light text-primary"
       } transition-colors duration-300`}
     >
       <Navbar darkMode={darkMode} toggleDarkMode={toggleDarkMode} />
       <div className="max-w-3xl mx-auto py-10 px-4 sm:px-6 lg:px-8">
-        <h1 className="text-3xl font-semibold dark:text-gray-50 mb-6 text-center">
-          Google Meet Transcription Bot
+        <h1 className="text-3xl font-semibold mb-6 text-center">
+          IntelliMeet Transcription Bot
         </h1>
+        <h6 className="text-sm font-normal mb-2 text-center">
+          Supports Google Meet, Zoom, and Microsoft Teams
+        </h6>
         <InputSection
           meetingUrl={meetingUrl}
           setMeetingUrl={setMeetingUrl}
@@ -111,10 +117,12 @@ function App() {
           handleDownloadTranscript={handleDownloadTranscript}
           handleClearTranscript={handleClearTranscript}
         />
+        <SummarySection /> {/* Add the SummarySection component */}
       </div>
       <Footer />
+      <MomSection /> {/* Render the MomSection component */}
     </div>
   );
-}
+};
 
 export default App;
