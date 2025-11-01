@@ -14,7 +14,7 @@ const io = new Server(server, {
 app.use(express.json());
 app.use(cors());
 
-// Axios instance for Recall.ai API
+// Recall API instance
 const recall = axios.create({
   baseURL: "https://us-west-2.recall.ai/api/v1",
   headers: {
@@ -23,17 +23,31 @@ const recall = axios.create({
   },
 });
 
-// Deploy bot to Google Meet
+// 🧠 Identify meeting platform automatically
+function detectPlatform(url) {
+  if (url.includes("zoom.us")) return "Zoom";
+  if (url.includes("meet.google.com")) return "Google Meet";
+  if (url.includes("teams.microsoft.com")) return "Microsoft Teams";
+  return "Unknown";
+}
+
+// 🚀 Universal Deploy Bot Route
 app.post("/deploy-bot", async (req, res) => {
   const { meeting_url } = req.body;
   if (!meeting_url) {
     return res.status(400).json({ error: "Meeting URL is required" });
   }
 
+  const platform = detectPlatform(meeting_url);
+
+  if (platform === "Unknown") {
+    return res.status(400).json({ error: "Unsupported meeting platform" });
+  }
+
   try {
     const response = await recall.post("/bot", {
       meeting_url,
-      bot_name: "IntelliMeet",
+      bot_name: `IntelliMeet (${platform})`,
       recording_config: {
         transcript: { provider: { meeting_captions: {} } },
         realtime_endpoints: [
@@ -45,13 +59,19 @@ app.post("/deploy-bot", async (req, res) => {
         ],
       },
     });
-    res.json({ bot_id: response.data.id });
+
+    console.log(`✅ ${platform} Bot Deployed:`, response.data.id);
+    res.json({
+      message: `${platform} bot deployed successfully`,
+      bot_id: response.data.id,
+    });
   } catch (error) {
-    res.status(500).json({ error: "Failed to deploy bot" });
+    console.error(`❌ Error deploying ${platform} bot:`, error.response?.data || error.message);
+    res.status(500).json({ error: `Failed to deploy ${platform} bot` });
   }
 });
 
-// Handle transcription webhooks
+// 📝 Handle transcription webhooks
 app.post("/webhook/transcription", (req, res) => {
   const transcriptData = req.body.data?.data || {};
   if (!transcriptData.words || !Array.isArray(transcriptData.words)) {
@@ -64,10 +84,8 @@ app.post("/webhook/transcription", (req, res) => {
     timestamp: transcriptData.words[0].start_timestamp?.relative || 0,
   };
 
-  // Emit transcript to frontend (original behavior)
   io.emit("transcript", transcript);
 
-  // Generate and emit notes if any
   const notes = takenotes(transcript.text);
   if (notes && notes.length > 0) {
     io.emit("notes", { speaker: transcript.speaker, notes });
@@ -76,7 +94,7 @@ app.post("/webhook/transcription", (req, res) => {
   res.status(200).json({});
 });
 
-// Start server
+// 🚦 Start server
 server.listen(process.env.PORT || 3001, () => {
-  console.log("Server running on port 3001");
+  console.log(`Server running on port ${process.env.PORT || 3001}`);
 });
