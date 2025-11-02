@@ -9,11 +9,8 @@ const MomSection = () => {
   useEffect(() => {
     const handleMoM = (data) => {
       console.log("Received MoM:", data); // Debugging log
-      // Append new minutes to the existing ones, with a newline for separation
-      setMeetingsofminutes(
-        (prevMinutes) =>
-          prevMinutes + (prevMinutes ? "\n" : "") + data.meetingsofminutes
-      );
+      // Replace the existing minutes with the new ones
+      setMeetingsofminutes(data.meetingsofminutes);
     };
 
     // Listen for the "meetingsofminutes" event from the backend
