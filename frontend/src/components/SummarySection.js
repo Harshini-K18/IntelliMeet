@@ -19,15 +19,17 @@ const SummarySection = () => {
   };
 
   return (
-    <div className="mt-8">
-      <h2 className="text-2xl font-semibold mb-4 text-center text-primary dark:text-light">Meeting Summary</h2>
+    <div className="text-center">
+      <h2 className="text-2xl font-semibold mb-4 text-light-text dark:text-dark-text">
+        Meeting Summary
+      </h2>
       <button
         onClick={fetchSummary}
-        className="bg-secondary text-light px-4 py-2 rounded-md hover:bg-primary transition"
+        className="bg-light-accent text-light-bg dark:bg-dark-accent dark:text-dark-bg px-4 py-2 rounded-md hover:opacity-90 transition mb-4"
       >
         {loading ? "Generating Summary..." : "Summarize Meeting"}
       </button>
-      <div className="bg-light dark:bg-primary p-4 rounded-md shadow-md mt-4 whitespace-pre-wrap text-primary dark:text-light">
+      <div className="bg-light-bg dark:bg-dark-bg shadow-inner rounded-lg p-4 whitespace-pre-wrap text-left text-light-text dark:text-dark-text">
         {summary || "Click the button to generate a summary of the meeting."}
       </div>
     </div>

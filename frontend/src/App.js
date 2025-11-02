@@ -16,14 +16,31 @@ const App = () => {
   const [meetingUrl, setMeetingUrl] = useState("");
   const [transcripts, setTranscripts] = useState([]);
   const [status, setStatus] = useState("");
-  const [darkMode, setDarkMode] = useState(false);
+  const [darkMode, setDarkMode] = useState(false); // Default to dark mode
   const [isCopied, setIsCopied] = useState(false);
   const transcriptContainerRef = useRef(null);
 
-  // Toggle dark mode
+  // Apply theme class to the root element
+  useEffect(() => {
+    const root = window.document.documentElement;
+    if (darkMode) {
+      root.classList.add('dark');
+    } else {
+      root.classList.remove('dark');
+    }
+    localStorage.setItem("darkMode", darkMode);
+  }, [darkMode]);
+
+  // Load theme preference from local storage
+  useEffect(() => {
+    const storedDarkMode = localStorage.getItem("darkMode");
+    if (storedDarkMode) {
+      setDarkMode(JSON.parse(storedDarkMode));
+    }
+  }, []);
+
   const toggleDarkMode = () => {
     setDarkMode((prev) => !prev);
-    localStorage.setItem("darkMode", !darkMode);
   };
 
   // Load dark mode preference from local storage
@@ -88,39 +105,53 @@ const App = () => {
   };
 
     return (
-    <div
-      className={`relative min-h-screen ${
-        darkMode ? "dark bg-primary text-light" : "bg-light text-primary"
-      } transition-colors duration-300`}
-    >
-      <Navbar darkMode={darkMode} toggleDarkMode={toggleDarkMode} />
+    <div className="relative min-h-screen bg-light-bg text-light-text dark:bg-dark-bg dark:text-dark-text transition-colors duration-300 font-sans">
+      <Navbar toggleDarkMode={toggleDarkMode} darkMode={darkMode} />
       <div className="max-w-3xl mx-auto py-10 px-4 sm:px-6 lg:px-8">
-        <h1 className="text-3xl font-semibold mb-6 text-center">
-          IntelliMeet Transcription Bot
-        </h1>
-        <h6 className="text-sm font-normal mb-2 text-center">
-          Supports Google Meet, Zoom, and Microsoft Teams
-        </h6>
-        <InputSection
-          meetingUrl={meetingUrl}
-          setMeetingUrl={setMeetingUrl}
-          handleDeployBot={handleDeployBot}
-        />
-        <StatusMessage
-          status={status}
-          handleCopyBotId={handleCopyBotId}
-          isCopied={isCopied}
-        />
-        <TranscriptSection
-          transcripts={transcripts}
-          transcriptContainerRef={transcriptContainerRef}
-          handleDownloadTranscript={handleDownloadTranscript}
-          handleClearTranscript={handleClearTranscript}
-        />
-        <SummarySection /> {/* Add the SummarySection component */}
+        <div className="text-center mb-10">
+          <h1 className="text-3xl font-semibold mb-2">
+            IntelliMeet Transcription Bot
+          </h1>
+          <h6 className="text-sm font-normal">
+            Supports Google Meet, Zoom, and Microsoft Teams
+          </h6>
+        </div>
+
+        {/* Input and Status Card */}
+        <div className="bg-light-card dark:bg-dark-card p-6 rounded-lg shadow-md mb-8">
+          <InputSection
+            meetingUrl={meetingUrl}
+            setMeetingUrl={setMeetingUrl}
+            handleDeployBot={handleDeployBot}
+          />
+          <StatusMessage
+            status={status}
+            handleCopyBotId={handleCopyBotId}
+            isCopied={isCopied}
+          />
+        </div>
+
+        {/* Transcript Card */}
+        <div className="bg-light-card dark:bg-dark-card p-6 rounded-lg shadow-md mb-8">
+          <TranscriptSection
+            transcripts={transcripts}
+            transcriptContainerRef={transcriptContainerRef}
+            handleDownloadTranscript={handleDownloadTranscript}
+            handleClearTranscript={handleClearTranscript}
+          />
+        </div>
+
+        {/* Summary Card */}
+        <div className="bg-light-card dark:bg-dark-card p-6 rounded-lg shadow-md mb-8">
+          <SummarySection />
+        </div>
+
+        {/* MoM Card */}
+        <div className="bg-light-card dark:bg-dark-card p-6 rounded-lg shadow-md mb-8">
+          <MomSection />
+        </div>
       </div>
       <Footer />
-      <MomSection /> {/* Render the MomSection component */}
     </div>
   );
 };

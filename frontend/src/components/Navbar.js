@@ -3,7 +3,7 @@ import { SunIcon, MoonIcon } from "@heroicons/react/24/outline";
 
 const Navbar = ({ darkMode, toggleDarkMode }) => {
   return (
-    <nav className={`shadow-sm ${darkMode ? 'bg-primary' : 'bg-light'}`}>
+    <nav className="shadow-sm bg-light-card dark:bg-dark-card transition-colors duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           <div className="flex items-center">
@@ -12,7 +12,7 @@ const Navbar = ({ darkMode, toggleDarkMode }) => {
                 <img
                   width="108"
                   loading="lazy"
-                  alt=""
+                  alt="Logo Light"
                   src="https://cdn.prod.website-files.com/620d732b1f1f7b244ac89f0e/66c1f6a9a8b687fd5181e167_logo.svg"
                   className="logo-light"
                 />
@@ -31,10 +31,10 @@ const Navbar = ({ darkMode, toggleDarkMode }) => {
             <a
               href="https://docs.recall.ai"
               target="_blank"
-              className="flex mr-4"
+              className="flex mr-4 items-center"
               rel="noreferrer"
             >
-              <div className={darkMode ? 'text-light' : 'text-primary'}>
+              <div className="text-light-text dark:text-dark-text">
                 <p>API Docs</p>
               </div>
               {darkMode ? (
@@ -53,17 +53,13 @@ const Navbar = ({ darkMode, toggleDarkMode }) => {
             </a>
             <button
               onClick={toggleDarkMode}
-              className={`p-2 rounded-full focus:outline-none transition-colors duration-300 ${
-                darkMode
-                  ? "bg-secondary hover:bg-accent text-light"
-                  : "bg-accent hover:bg-secondary text-primary"
-              }`}
+              className="p-2 rounded-full focus:outline-none transition-colors duration-300 bg-light-accent text-light-bg dark:bg-dark-accent dark:text-dark-bg hover:opacity-90"
               aria-label="Toggle dark mode"
             >
               {darkMode ? (
-                <MoonIcon className="h-6 w-6" />
-              ) : (
                 <SunIcon className="h-6 w-6" />
+              ) : (
+                <MoonIcon className="h-6 w-6" />
               )}
             </button>
           </div>

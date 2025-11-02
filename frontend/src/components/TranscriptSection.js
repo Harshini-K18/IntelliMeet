@@ -25,20 +25,16 @@ const TranscriptSection = ({
   }, []);
 
   return (
-    <div className="my-8">
+    <div>
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-medium text-primary dark:text-light text-center">
+        <h2 className="text-xl font-medium text-light-text dark:text-dark-text text-center">
           Live Transcript
         </h2>
         <div>
           <button
             onClick={() => handleDownloadTranscript(transcripts)}
             disabled={transcripts.length === 0}
-            className={`flex items-center text-primary dark:text-light ${
-              transcripts.length === 0
-                ? "opacity-50 cursor-not-allowed"
-                : "hover:text-accent dark:hover:text-accent"
-            } transition-colors duration-200`}
+            className="flex items-center text-light-accent dark:text-dark-accent disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-80 transition-colors duration-200"
             aria-label="Download"
           >
             <span className="mr-2">Download Transcript</span>
@@ -48,37 +44,33 @@ const TranscriptSection = ({
       </div>
 
       <div
-       ref={transcriptContainerRef}
-        className="bg-light dark:bg-primary shadow-md rounded-lg p-6 max-h-96 overflow-y-auto"
+        ref={transcriptContainerRef}
+        className="bg-light-bg dark:bg-dark-bg shadow-inner rounded-lg p-4 max-h-96 overflow-y-auto"
       >
         {transcripts.length === 0 ? (
-          <p className="text-secondary dark:text-accent text-center">
+          <p className="text-light-text dark:text-dark-text text-center">
             No transcripts yet...
           </p>
         ) : (
           transcripts.map((t, index) => (
             <div
               key={index}
-              className="border-b border-secondary last:border-b-0 py-2 px-4 my-2 bg-secondary dark:bg-accent text-light dark:text-primary whitespace-pre-wrap rounded-lg break-words w-fit max-w-[85%] mr-auto"
+              className="border-b border-light-accent dark:border-dark-accent last:border-b-0 py-2 px-4 my-2 bg-light-card dark:bg-dark-card text-light-text dark:text-dark-text whitespace-pre-wrap rounded-lg break-words w-fit max-w-[85%] mr-auto"
             >
-              <span className="text-light dark:text-primary">
+              <span className="font-semibold">
                 [{formatTimestamp(t.timestamp)}] {t.speaker}:{" "}
               </span>
-              <span className="text-light dark:text-primary">{t.text}</span>
+              <span>{t.text}</span>
             </div>
           ))
         )}
       </div>
 
-       <div className="flex justify-end mt-4">
+      <div className="flex justify-end mt-4">
         <button
           onClick={handleClearTranscript}
           disabled={transcripts.length === 0}
-          className={`py-2 px-4 border rounded-lg ${
-            transcripts.length === 0
-              ? "opacity-50 cursor-not-allowed text-secondary border-secondary"
-              : "border-danger text-danger hover:text-light hover:bg-danger"
-          } transition-colors duration-200`}
+          className="py-2 px-4 border rounded-lg border-danger text-danger disabled:opacity-50 disabled:cursor-not-allowed hover:text-white hover:bg-danger transition-colors duration-200"
           aria-label="Clear transcript"
         >
           Clear Transcript
@@ -86,12 +78,12 @@ const TranscriptSection = ({
       </div>
 
       {/* Important Notes Section */}
-       <div className="mt-8">
-        <h2 className="text-xl font-medium text-primary dark:text-light text-center mb-4">
+      <div className="mt-8">
+        <h2 className="text-xl font-medium text-light-text dark:text-dark-text text-center mb-4">
           Important Notes
         </h2>
         {notes.length === 0 ? (
-          <p className="text-secondary dark:text-accent text-center">
+          <p className="text-light-text dark:text-dark-text text-center">
             No notes yet...
           </p>
         ) : (
@@ -99,12 +91,12 @@ const TranscriptSection = ({
             {notes.map((n, index) => (
               <li
                 key={index}
-                className="bg-light dark:bg-primary p-4 rounded-lg shadow-md"
+                className="bg-light-bg dark:bg-dark-bg p-4 rounded-lg shadow-inner"
               >
-                <strong className="block text-primary dark:text-light">
+                <strong className="block text-light-text dark:text-dark-text">
                   {n.speaker}:
                 </strong>
-                <span className="text-secondary dark:text-accent">{n.notes}</span>
+                <span className="text-light-text dark:text-dark-text">{n.notes}</span>
               </li>
             ))}
           </ul>
