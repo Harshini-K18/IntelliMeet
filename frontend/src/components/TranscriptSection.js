@@ -1,41 +1,54 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 import { ArrowDownTrayIcon } from "@heroicons/react/24/outline";
-import { io } from "socket.io-client";
 import { formatTimestamp } from "../utils/formatTimestamp";
 
-const TranscriptSection = ({
+export default function TranscriptSection({
   transcripts,
   transcriptContainerRef,
   handleDownloadTranscript,
   handleClearTranscript,
-}) => {
-  const [notes, setNotes] = useState([]);
+}) {
 
-  // Socket for notes
-  useEffect(() => {
-    const socket = io("http://localhost:3001");
+  // COPY FUNCTION
+  async function handleCopyTranscripts() {
+    const text = (Array.isArray(transcripts) ? transcripts : [])
+      .map(
+        (t) =>
+          `${t.speaker ? t.speaker + ": " : ""}${t.text || ""}`
+      )
+      .join("\n");
 
-    socket.on("notes", (data) => {
-      if (data && data.notes && data.notes.trim() !== "") {
-        setNotes((prev) => [...prev, data]);
+    if (!text) return;
+
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        const ta = document.createElement("textarea");
+        ta.value = text;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        document.body.removeChild(ta);
       }
-    });
-
-    return () => socket.disconnect();
-  }, []);
+    } catch (err) {
+      console.error("copy transcripts error", err);
+    }
+  }
 
   return (
     <div>
+      {/* HEADER */}
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-medium text-light-text dark:text-dark-text text-center">
+        <h2 className="text-xl font-medium text-light-text dark:text-dark-text">
           Live Transcript
         </h2>
+
         <div>
           <button
             onClick={() => handleDownloadTranscript(transcripts)}
             disabled={transcripts.length === 0}
-            className="flex items-center text-light-accent dark:text-dark-accent disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-80 transition-colors duration-200"
-            aria-label="Download"
+            className="flex items-center text-blue-600 dark:text-blue-400 disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-80 transition duration-200"
           >
             <span className="mr-2">Download Transcript</span>
             <ArrowDownTrayIcon className="h-5 w-5" />
@@ -43,6 +56,7 @@ const TranscriptSection = ({
         </div>
       </div>
 
+      {/* TRANSCRIPT BOX */}
       <div
         ref={transcriptContainerRef}
         className="bg-light-bg dark:bg-dark-bg shadow-inner rounded-lg p-4 max-h-96 overflow-y-auto"
@@ -66,44 +80,28 @@ const TranscriptSection = ({
         )}
       </div>
 
-      <div className="flex justify-end mt-4">
+      {/* BUTTON ROW */}
+      <div className="flex justify-end gap-3 mt-4">
+
+        {/* COPY BUTTON — BLUE */}
+        <button
+          onClick={handleCopyTranscripts}
+          disabled={transcripts.length === 0}
+          className="py-2 px-4 border border-blue-600 text-blue-600 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-blue-600 hover:text-white transition duration-200"
+        >
+          Copy Transcript
+        </button>
+
+        {/* CLEAR BUTTON — SAME BLUE STYLE */}
         <button
           onClick={handleClearTranscript}
           disabled={transcripts.length === 0}
-          className="py-2 px-4 border rounded-lg border-danger text-danger disabled:opacity-50 disabled:cursor-not-allowed hover:text-white hover:bg-danger transition-colors duration-200"
-          aria-label="Clear transcript"
+          className="py-2 px-4 border border-blue-600 text-blue-600 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-blue-600 hover:text-white transition duration-200"
         >
           Clear Transcript
         </button>
-      </div>
 
-      {/* Important Notes Section */}
-      <div className="mt-8">
-        <h2 className="text-xl font-medium text-light-text dark:text-dark-text text-center mb-4">
-          Important Notes
-        </h2>
-        {notes.length === 0 ? (
-          <p className="text-light-text dark:text-dark-text text-center">
-            No notes yet...
-          </p>
-        ) : (
-          <ul className="space-y-2">
-            {notes.map((n, index) => (
-              <li
-                key={index}
-                className="bg-light-bg dark:bg-dark-bg p-4 rounded-lg shadow-inner"
-              >
-                <strong className="block text-light-text dark:text-dark-text">
-                  {n.speaker}:
-                </strong>
-                <span className="text-light-text dark:text-dark-text">{n.notes}</span>
-              </li>
-            ))}
-          </ul>
-        )}
       </div>
     </div>
   );
-};
-
-export default TranscriptSection;
+}

@@ -1,39 +1,49 @@
 import React, { useState } from "react";
 
-const SummarySection = () => {
-  const [summary, setSummary] = useState("");
+export default function SummarySection({ transcripts }) {
   const [loading, setLoading] = useState(false);
+  const [summary, setSummary] = useState(null);
 
-  const fetchSummary = async () => {
+  // Convert transcripts array into plain text
+  const transcriptText = transcripts
+    .map(t => `${t.speaker}: ${t.text}`)
+    .join("\n");
+
+  async function handleGenerate() {
     setLoading(true);
     try {
-      const response = await fetch("http://localhost:3001/summarize-transcript");
-      const data = await response.json();
-      setSummary(data.summary);
-    } catch (error) {
-      console.error("Error fetching summary:", error.message);
-      setSummary("Error fetching summary.");
+      const resp = await fetch("http://localhost:3001/generate-summary", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ transcriptText }),
+      });
+
+      const data = await resp.json();
+      setSummary(data);
+    } catch (e) {
+      console.error("generate summary error", e);
+      setSummary({ summary: "Failed to generate summary." });
     } finally {
       setLoading(false);
     }
-  };
+  }
 
   return (
-    <div className="text-center">
-      <h2 className="text-2xl font-semibold mb-4 text-light-text dark:text-dark-text">
-        Meeting Summary
-      </h2>
+    <div>
       <button
-        onClick={fetchSummary}
+        onClick={handleGenerate}
+        disabled={loading}
         className="bg-light-accent text-light-bg dark:bg-dark-accent dark:text-dark-bg px-4 py-2 rounded-md hover:opacity-90 transition mb-4"
       >
-        {loading ? "Generating Summary..." : "Summarize Meeting"}
+        {loading ? "Generating…" : "Generate Summary"}
       </button>
-      <div className="bg-light-bg dark:bg-dark-bg shadow-inner rounded-lg p-4 whitespace-pre-wrap text-left text-light-text dark:text-dark-text">
-        {summary || "Click the button to generate a summary of the meeting."}
-      </div>
+
+      {summary && (
+        <div className="bg-light-bg dark:bg-dark-bg shadow-inner rounded-lg p-4 whitespace-pre-wrap text-left text-light-text dark:text-dark-text">
+          <h4 className="font-semibold mb-2">Summary</h4>
+          <p>{summary.summary || JSON.stringify(summary)}</p>
+        </div>
+      )}
     </div>
   );
-};
-
-export default SummarySection;
+}

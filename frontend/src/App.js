@@ -6,11 +6,11 @@ import InputSection from "./components/InputSection";
 import StatusMessage from "./components/StatusMessage";
 import TranscriptSection from "./components/TranscriptSection";
 import Footer from "./components/Footer";
-import MomSection from "./components/momsection";
 import { handleDownloadTranscript } from "./utils/downloadTranscript";
-import SummarySection from "./components/SummarySection";
 import MeetingAnalytics from "./components/MeetingAnalytics";
-import ActionItemsSection from "./components/ActionItemsSection";
+import MeetingSummary from "./components/MeetingSummary";
+import TaskExtractor from "./components/TaskExtractor";
+import FinishMeetingButton from "./FinishMeetingButton";
 
 const socket = io("http://localhost:3001");
 
@@ -22,102 +22,103 @@ const App = () => {
   const [isCopied, setIsCopied] = useState(false);
   const transcriptContainerRef = useRef(null);
 
-  // Apply theme class to the root element
+  // 🌟 NEW — Show download button only after dashboard is generated
+  const [dashboardReady, setDashboardReady] = useState(false);
+
+  // DARK MODE
   useEffect(() => {
-    const root = window.document.documentElement;
-    if (darkMode) {
-      root.classList.add("dark");
-    } else {
-      root.classList.remove("dark");
-    }
+    const root = document.documentElement;
+    darkMode ? root.classList.add("dark") : root.classList.remove("dark");
     localStorage.setItem("darkMode", darkMode);
   }, [darkMode]);
 
-  // Load theme preference from local storage
   useEffect(() => {
-    const storedDarkMode = localStorage.getItem("darkMode");
-    if (storedDarkMode) {
-      setDarkMode(JSON.parse(storedDarkMode));
-    }
+    const storedDark = localStorage.getItem("darkMode");
+    if (storedDark) setDarkMode(JSON.parse(storedDark));
   }, []);
 
-  const toggleDarkMode = () => {
-    setDarkMode((prev) => !prev);
-  };
+  const toggleDarkMode = () => setDarkMode((p) => !p);
 
-  // Handle real-time transcript updates
+  // SOCKET - Receive live transcripts
   useEffect(() => {
-    socket.on("transcript", (transcript) => {
-      setTranscripts((prev) => [...prev, transcript]);
+    socket.on("transcript", (newTranscript) => {
+      if (!newTranscript?.utterance_id) return;
+
+      setTranscripts((prev) => {
+        const i = prev.findIndex(
+          (t) => t.utterance_id === newTranscript.utterance_id
+        );
+        if (i !== -1) {
+          const updated = [...prev];
+          updated[i] = newTranscript;
+          return updated;
+        }
+        return [...prev, newTranscript];
+      });
     });
+
     return () => socket.off("transcript");
   }, []);
 
-  // Auto-scroll to bottom when new transcripts arrive
+  // Auto scroll
   useEffect(() => {
-    const container = transcriptContainerRef.current;
-    if (container) {
-      const lastChild = container.lastElementChild;
-      if (lastChild) {
-        lastChild.scrollIntoView({ behavior: "smooth" });
-      }
-    }
+    const div = transcriptContainerRef.current;
+    if (div) div.scrollTop = div.scrollHeight;
   }, [transcripts]);
 
   // Deploy bot
   const handleDeployBot = async () => {
-    if (!meetingUrl) {
-      setStatus("Please enter a valid Meeting URL");
-      return;
-    }
+    if (!meetingUrl) return setStatus("Please enter a valid Meeting URL");
+
     setStatus("Deploying bot...");
+
     try {
       const response = await axios.post("http://localhost:3001/deploy-bot", {
         meeting_url: meetingUrl,
       });
       setStatus(`Bot deployed with ID: ${response.data.bot_id}`);
-    } catch (error) {
-      const errorMessage = error.response?.data?.error || error.message;
-      setStatus(`Error deploying bot: ${errorMessage}`);
+    } catch (e) {
+      const msg = e.response?.data?.error || e.message;
+      setStatus(`Error deploying bot: ${msg}`);
     }
   };
 
-  // Clear all transcripts
   const handleClearTranscript = () => {
-    if (window.confirm("Are you sure you want to clear all transcripts?")) {
-      setTranscripts([]);
-    }
+    if (window.confirm("Clear all transcripts?")) setTranscripts([]);
   };
 
-  // Copy bot ID
   const handleCopyBotId = () => {
     const botId = status.replace("Bot deployed with ID: ", "").trim();
     navigator.clipboard.writeText(botId);
     setIsCopied(true);
-    setTimeout(() => setIsCopied(false), 1000);
+    setTimeout(() => setIsCopied(false), 1200);
   };
 
   return (
-    <div className="relative min-h-screen bg-light-bg text-light-text dark:bg-dark-bg dark:text-dark-text transition-colors duration-300 font-sans">
+    <div className="relative min-h-screen flex flex-col bg-light-bg text-light-text dark:bg-dark-bg dark:text-dark-text transition-colors duration-300 font-sans">
+
       <Navbar toggleDarkMode={toggleDarkMode} darkMode={darkMode} />
 
-      <div className="max-w-3xl mx-auto py-10 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto py-10 px-4 sm:px-6 lg:px-8 flex-grow">
+
+        {/* HEADER */}
         <div className="text-center mb-10">
-          <h1 className="text-3xl font-semibold mb-2">
-            IntelliMeet Transcription Bot
+          <h1 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-light-accent to-light-text dark:from-dark-accent dark:to-white">
+            IntelliMeet - Meetings Made Seamless with AI
           </h1>
           <h6 className="text-sm font-normal">
             Supports Google Meet, Zoom, and Microsoft Teams
           </h6>
         </div>
 
-        {/* Input and Status */}
+        {/* INPUT + STATUS */}
         <div className="bg-light-card dark:bg-dark-card p-6 rounded-lg shadow-md mb-8">
           <InputSection
             meetingUrl={meetingUrl}
             setMeetingUrl={setMeetingUrl}
             handleDeployBot={handleDeployBot}
           />
+
           <StatusMessage
             status={status}
             handleCopyBotId={handleCopyBotId}
@@ -125,35 +126,57 @@ const App = () => {
           />
         </div>
 
-        {/* Transcripts */}
-        <div className="bg-light-card dark:bg-dark-card p-6 rounded-lg shadow-md mb-8">
-          <TranscriptSection
-            transcripts={transcripts}
-            transcriptContainerRef={transcriptContainerRef}
-            handleDownloadTranscript={handleDownloadTranscript}
-            handleClearTranscript={handleClearTranscript}
-          />
-        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
-        {/* Summary */}
-        <div className="bg-light-card dark:bg-dark-card p-6 rounded-lg shadow-md mb-8">
-          <SummarySection />
-        </div>
+          {/* LEFT SIDE */}
+          <div className="lg:col-span-2 flex flex-col gap-8">
+            <div className="bg-light-card dark:bg-dark-card p-6 rounded-lg shadow-md">
+              <TranscriptSection
+                transcripts={transcripts}
+                transcriptContainerRef={transcriptContainerRef}
+                handleDownloadTranscript={() =>
+                  handleDownloadTranscript(transcripts)
+                }
+                handleClearTranscript={handleClearTranscript}
+              />
+            </div>
 
-        {/* Minutes of Meeting */}
-        <div className="bg-light-card dark:bg-dark-card p-6 rounded-lg shadow-md mb-8">
-          <MomSection />
-        </div>
+            <div className="bg-light-card dark:bg-dark-card p-6 rounded-lg shadow-md">
+              <TaskExtractor />
+            </div>
+          </div>
 
-        {/* Meeting Analytics */}
-        <div className="bg-light-card dark:bg-dark-card p-6 rounded-lg shadow-md mb-8">
-          <MeetingAnalytics transcript={transcripts} />
-        </div>
+          {/* RIGHT SIDE */}
+          <div className="lg:col-span-1 flex flex-col gap-8">
+            <div className="bg-light-card dark:bg-dark-card p-6 rounded-lg shadow-md">
+              <MeetingAnalytics transcript={transcripts} />
+            </div>
 
-        {/* Action Items */}
-        <div className="bg-light-card dark:bg-dark-card p-6 rounded-lg shadow-md mb-8">
-          <ActionItemsSection transcript={transcripts} />
+            <div className="bg-light-card dark:bg-dark-card p-6 rounded-lg shadow-md">
+              <MeetingSummary />
+            </div>
+          </div>
+
         </div>
+      </div>
+
+      {/* ✅ SHOW DOWNLOAD BUTTON ONLY WHEN READY */}
+      {dashboardReady && (
+        <div className="flex justify-center mb-6">
+          <a
+            href="http://localhost:3001/download-pdf"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-5 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+          >
+            Download Dashboard PDF
+          </a>
+        </div>
+      )}
+
+      {/* FINISH MEETING */}
+      <div className="flex justify-center mt-6 mb-10">
+        <FinishMeetingButton onDashboardGenerated={() => setDashboardReady(true)} />
       </div>
 
       <Footer />

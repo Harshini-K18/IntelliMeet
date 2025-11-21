@@ -2,10 +2,8 @@ import React from "react";
 
 const Footer = () => {
   return (
-    <footer className="absolute bottom-0 w-full flex flex-col text-center py-6 text-sm text-light-text dark:text-dark-text">
-      <div
-        className="font-semibold mb-2"
-      >
+    <footer className="w-full flex flex-col text-center py-6 text-sm text-light-text dark:text-dark-text mt-10">
+      <div className="font-semibold mb-2">
         Developed by: Harshini K , Pragnya R , Prerana G
       </div>
       <a
