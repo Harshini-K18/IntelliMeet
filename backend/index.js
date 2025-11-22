@@ -520,7 +520,6 @@ async function endMeetingWorkflow({ recallPayload = null, meetingId = null } = {
     }
 
     const fullText = transcriptArray.map(t => t.text || "").join("\n");
-
     const notes = await safeTakenotes(fullText);
     const mom = await safeGenerateMom(fullText);
 
@@ -580,10 +579,9 @@ async function endMeetingWorkflow({ recallPayload = null, meetingId = null } = {
 
     const html = createDashboardHTML(dashboardData, charts);
     lastDashboardHTML = html;
-    lastDashboardTimestamp = Date.now();
+lastDashboardTimestamp = Date.now();
     console.log("Dashboard HTML saved for /dashboard");
-
-    const pdfBuffer = await generatePDFBuffer(html);
+const pdfBuffer = await generatePDFBuffer(html);
 
     // send emails if participants
     let emailResult = null;
@@ -645,7 +643,7 @@ app.post("/participants", (req, res) => {
 });
 app.get("/participants/:meetingId", (req, res) => {
   const id = req.params.meetingId || "default";
-  const list = participantsByMeeting.get(String(id)) || [];
+const list = participantsByMeeting.get(String(id)) || [];
   res.json({ meetingId: id, participants: list });
 });
 
@@ -872,99 +870,155 @@ app.post("/api/store-frontend-tasks", (req, res) => {
   res.json({ ok: true });
 });
 
-// ---------- Jira helper (fallback) ----------
-const JIRA_BASE = (process.env.JIRA_DOMAIN && process.env.JIRA_DOMAIN.startsWith("http")) ? process.env.JIRA_DOMAIN.replace(/\/+$/, "") : (process.env.JIRA_DOMAIN ? `https://${process.env.JIRA_DOMAIN.replace(/^https?:\/\//, "")}` : null);
-const JIRA_PROJECT_KEY = process.env.JIRA_PROJECT_KEY || "SCRUM";
-const JIRA_EMAIL = process.env.JIRA_EMAIL || process.env.JIRA_USER;
-const JIRA_API_TOKEN = process.env.JIRA_API_TOKEN;
-
-function jiraAuthHeader() {
-  if (!JIRA_EMAIL || !JIRA_API_TOKEN || !JIRA_BASE) return null;
-  const token = Buffer.from(`${JIRA_EMAIL}:${JIRA_API_TOKEN}`).toString("base64");
-  return `Basic ${token}`;
-}
-
-async function createJiraIssueFallback(task) {
-  if (!JIRA_BASE || !JIRA_PROJECT_KEY || !JIRA_EMAIL || !JIRA_API_TOKEN) {
-    throw new Error("Jira environment variables not set (JIRA_DOMAIN, JIRA_PROJECT_KEY, JIRA_EMAIL, JIRA_API_TOKEN).");
-  }
-
-  const summary = (task.task || "").slice(0, 140) || "Meeting task";
-  const descriptionParts = [];
-  if (task.original_line) descriptionParts.push(`**Source:** ${task.original_line}`);
-  if (task.assigned_to) descriptionParts.push(`**Owner:** ${task.assigned_to}`);
-  if (task.deadline) descriptionParts.push(`**Deadline:** ${task.deadline}`);
-  if (task.labels && Array.isArray(task.labels) && task.labels.length) descriptionParts.push(`**Labels:** ${task.labels.join(", ")}`);
-  const description = (task.description || descriptionParts.join("\n\n") || "").trim();
-
-  const payload = {
-    fields: {
-      project: { key: JIRA_PROJECT_KEY },
-      summary,
-      description: description || "Created from IntelliMeet task.",
-      issuetype: { name: "Task" }
-    }
-  };
-
-  const url = `${JIRA_BASE}/rest/api/3/issue`;
-  const headers = {
-    "Authorization": jiraAuthHeader(),
-    "Accept": "application/json",
-    "Content-Type": "application/json"
-  };
-
-  const resp = await axios.post(url, payload, { headers, timeout: 20000 });
-  return resp.data; // contains key, id, self
-}
-
-// If the user-provided taskExtractor exports saveTaskToJira, prefer it. Otherwise use fallback.
-let externalSaveToJira = null;
-try { externalSaveToJira = require("./utils/taskExtractor").saveTaskToJira; } catch (e) { externalSaveToJira = null; }
-
-// ---------- Jira endpoints ----------
-app.post("/api/save-to-jira", async (req, res) => {
+// ---------- Jira API Endpoints ----------
+const { createJiraIssueFallback } = require('./utils/jira');
+app.post('/api/save-to-jira', async (req, res) => {
   try {
     const { task } = req.body;
-    if (!task) return res.status(400).json({ error: "Task is required in body" });
+    if (!task) {
+      console.error('No task provided in request body');
+      return res.status(400).json({ ok: false, error: 'Task is required in body' });
+    }
 
-    let result;
-    if (typeof externalSaveToJira === "function") {
-      result = await externalSaveToJira(task);
-      return res.json({ ok: true, created: result });
-    } else {
+    if (typeof createJiraIssueFallback !== 'function') {
+      const error = 'Jira helper missing on server (backend/utils/jira.js)';
+      console.error(error);
+      return res.status(500).json({ ok: false, error });
+    }
+
+    console.log('Saving single task to Jira:', JSON.stringify({
+      task: task.task || task.title,
+      assigned_to: task.assigned_to,
+      deadline: task.deadline,
+      labels: task.labels
+    }, null, 2));
+
+    try {
       const created = await createJiraIssueFallback(task);
+      console.log('Jira create successful:', created.key);
       return res.json({ ok: true, created });
+    } catch (jiraError) {
+      console.error('Jira API error:', {
+        message: jiraError.message,
+        status: jiraError.response?.status,
+        statusText: jiraError.response?.statusText,
+        data: jiraError.response?.data
+      });
+      
+      const status = jiraError.response?.status || 500;
+      const errorMessage = jiraError.response?.data?.errorMessages?.join?.(', ') || 
+                          jiraError.response?.data?.message || 
+                          jiraError.message;
+      
+      return res.status(status).json({ 
+        ok: false, 
+        error: errorMessage,
+        details: jiraError.response?.data
+      });
     }
   } catch (err) {
-    console.error("save-to-jira error:", err?.response?.data || err?.message || err);
-    return res.status(500).json({ ok: false, error: err?.response?.data || err?.message || String(err) });
+    console.error('Unexpected error in /api/save-to-jira:', {
+      message: err.message,
+      stack: err.stack,
+      requestBody: req.body
+    });
+    return res.status(500).json({ 
+      ok: false, 
+      error: 'Internal server error',
+      details: process.env.NODE_ENV === 'development' ? err.message : undefined
+    });
   }
 });
 
-app.post("/api/save-multiple-to-jira", async (req, res) => {
+// ---------- Save multiple tasks to Jira -----------
+app.post('/api/save-multiple-to-jira', async (req, res) => {
   try {
     const { tasks } = req.body;
-    if (!Array.isArray(tasks) || tasks.length === 0) return res.status(400).json({ error: "tasks array required" });
-
-    const results = [];
-    for (const t of tasks) {
-      try {
-        if (typeof externalSaveToJira === "function") {
-          const created = await externalSaveToJira(t);
-          results.push({ ok: true, created });
-        } else {
-          const created = await createJiraIssueFallback(t);
-          results.push({ ok: true, created });
-        }
-      } catch (err) {
-        results.push({ ok: false, error: err?.response?.data || err?.message || String(err) });
-      }
+    
+    if (!Array.isArray(tasks) || tasks.length === 0) {
+      console.error('No tasks provided in request body');
+      return res.status(400).json({ ok: false, error: 'tasks array required' });
     }
 
-    return res.json({ ok: true, results });
+    if (typeof createJiraIssueFallback !== 'function') {
+      const error = 'Jira helper missing on server (backend/utils/jira.js)';
+      console.error(error);
+      return res.status(500).json({ ok: false, error });
+    }
+
+    console.log(`Saving ${tasks.length} tasks to Jira...`);
+    const results = [];
+    
+    for (const [index, task] of tasks.entries()) {
+      console.log(`Processing task ${index + 1}/${tasks.length}:`, 
+        JSON.stringify({
+          task: task.task || task.title,
+          assigned_to: task.assigned_to,
+          deadline: task.deadline,
+          labels: task.labels
+        }, null, 2)
+      );
+
+      try {
+        const created = await createJiraIssueFallback(task);
+        console.log(`Task ${index + 1} created successfully:`, created.key);
+        results.push({ ok: true, created });
+      } catch (jiraError) {
+        console.error(`Error creating task ${index + 1}:`, {
+          message: jiraError.message,
+          status: jiraError.response?.status,
+          statusText: jiraError.response?.statusText,
+          data: jiraError.response?.data
+        });
+        
+        const errorMessage = jiraError.response?.data?.errorMessages?.join?.(', ') || 
+                            jiraError.response?.data?.message || 
+                            jiraError.message;
+        
+        results.push({ 
+          ok: false, 
+          error: errorMessage,
+          details: jiraError.response?.data,
+          task: {
+            task: task.task || task.title,
+            assigned_to: task.assigned_to,
+            deadline: task.deadline,
+            labels: task.labels
+          }
+        });
+      }
+      
+      // Add a small delay between requests to avoid rate limiting
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
+
+    const successCount = results.filter(r => r.ok).length;
+    const failCount = results.length - successCount;
+    
+    console.log(`Jira batch create completed: ${successCount} succeeded, ${failCount} failed`);
+    
+    return res.json({ 
+      ok: true, 
+      results,
+      summary: {
+        total: results.length,
+        success: successCount,
+        failed: failCount
+      }
+    });
+    
   } catch (err) {
-    console.error("save-multiple-to-jira error:", err);
-    return res.status(500).json({ ok: false, error: err?.message || String(err) });
+    console.error('Unexpected error in /api/save-multiple-to-jira:', {
+      message: err.message,
+      stack: err.stack,
+      requestBody: req.body
+    });
+    
+    return res.status(500).json({ 
+      ok: false, 
+      error: 'Internal server error',
+      details: process.env.NODE_ENV === 'development' ? err.message : undefined
+    });
   }
 });
 

@@ -81,20 +81,47 @@ const generateMomWithOllama = async (transcript) => {
   }
 
   // Strong, explicit prompt so Ollama doesn't invent pronouns or change speaker names
-  const prompt = `
-You are a helpful assistant that converts raw meeting transcripts into a clear, structured Minutes of Meeting (MoM).
-Requirements:
-1) Preserve original speaker names exactly as they appear in the transcript (do not guess gender or substitute pronouns).
-2) Use neutral phrasing (use the speaker's name or "they" instead of gendered pronouns).
-3) Produce a structured MoM in plain text with these labeled sections: Date, Time (if present), Attendees, Topic (one-line), Key Points (bullet list), Decisions Made (bullet list), Action Items (bullet list with assignee when possible).
-4) Keep outputs concise and factual; do not invent information not present in the transcript.
-5) If timestamps or speakers are present (e.g. [0:00] Harshini K: ...), keep them in parentheses next to the point.
+const prompt = `
+You are a meeting assistant. 
+Generate a clean, readable **Minutes of Meeting (MoM)** from the transcript below.
+
+❗ VERY IMPORTANT:
+- DO NOT RETURN JSON.
+- DO NOT RETURN any curly braces { }.
+- DO NOT show "original_line".
+- Give the MoM in clean bullet points.
+- Tasks must be written as plain English sentences.
+
+Format EXACTLY like this:
+
+Minutes of Meeting
+Meeting: <auto detect or write "General Meeting">
+Attendees: <names you find>
+Topic: <main topic>
+
+Key Points:
+• point 1
+• point 2
+• point 3
+
+Decisions Made:
+• decision 1
+• decision 2
+
+Action Items:
+• Task: <task>
+  Assigned to: <name or Unknown>
+  Deadline: <deadline or None>
 
 Transcript:
-${transcript}
+<summarised transcript>
 
-Produce only the MoM (no commentary) and keep formatting simple for easy HTML highlighting.
+NOW GENERATE USING THE ABOVE FORMAT.
+
+TRANSCRIPT:
+${transcript}
 `;
+
 
   try {
     const url = "http://localhost:11434/api/generate"; // Ollama HTTP API
