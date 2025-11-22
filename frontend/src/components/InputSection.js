@@ -13,7 +13,7 @@ const InputSection = ({ meetingUrl, setMeetingUrl, handleDeployBot }) => {
       <button
         onClick={handleDeployBot}
         disabled={!meetingUrl}
-        className="px-6 py-2 bg-light-accent text-light-bg rounded-lg shadow focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-light-accent dark:bg-dark-accent dark:text-dark-bg dark:focus:ring-dark-accent transition-colors disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90"
+        className="px-6 py-2 bg-[#f69d9b] text-white rounded-lg shadow focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#f69d9b]/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#f69d9b]/90"
       >
         Deploy Bot
       </button>

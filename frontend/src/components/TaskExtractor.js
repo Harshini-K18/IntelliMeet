@@ -208,7 +208,7 @@ const TaskExtractor = () => {
   };
 
   return (
-    <div className="p-4 border rounded">
+    <div>
       <h2 className="text-xl font-bold mb-4">Task Extractor</h2>
       <textarea
         rows={10}
@@ -218,10 +218,19 @@ const TaskExtractor = () => {
         className="w-full p-2 border rounded mb-3"
       />
       <div className="flex gap-3 mb-4">
-        <button disabled={isExtracting || !pastedTranscript.trim()} onClick={extractTasks} className="px-4 py-2 bg-blue-600 text-white rounded">
+        <button 
+          disabled={isExtracting || !pastedTranscript.trim()} 
+          onClick={extractTasks} 
+          className="px-4 py-2 bg-[#f69d9b] text-white rounded hover:bg-[#f69d9b]/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
           {isExtracting ? "Extracting..." : "Extract Tasks"}
         </button>
-        <button onClick={() => { setPastedTranscript(""); setTasks([]); setSaveState({}); setError(null); }} className="px-4 py-2 bg-gray-500 text-white rounded">Clear</button>
+        <button 
+          onClick={() => { setPastedTranscript(""); setTasks([]); setSaveState({}); setError(null); }} 
+          className="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 transition-colors"
+        >
+          Clear
+        </button>
       </div>
 
       {error && <div className="text-red-600 mb-3">{error}</div>}
@@ -238,8 +247,19 @@ const TaskExtractor = () => {
             <div className="flex flex-col items-end gap-2 ml-3">
               {renderSaveStatus(t)}
               <div className="flex gap-2">
-                <button onClick={() => saveToJira(t)} disabled={saveState[t.task_id]?.saving} className="px-3 py-1 bg-blue-500 text-white rounded">Save to Jira</button>
-                <button onClick={() => navigator.clipboard.writeText(JSON.stringify(t, null, 2))} className="px-3 py-1 bg-gray-500 text-white rounded">Copy</button>
+                <button 
+                  onClick={() => saveToJira(t)} 
+                  disabled={saveState[t.task_id]?.saving} 
+                  className="px-3 py-1 bg-[#f69d9b] text-white rounded hover:bg-[#f69d9b]/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Save to Jira
+                </button>
+                <button 
+                  onClick={() => navigator.clipboard.writeText(JSON.stringify(t, null, 2))} 
+                  className="px-3 py-1 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 transition-colors"
+                >
+                  Copy
+                </button>
               </div>
             </div>
           </div>
@@ -247,10 +267,25 @@ const TaskExtractor = () => {
       </div>
 
       {tasks.length > 0 && (
-        <div className="mt-4 flex gap-2">
-          <button onClick={saveAllToJira} className="px-4 py-2 bg-blue-600 text-white rounded">Save All to Jira</button>
-          <button onClick={saveTasksToDashboard} className="px-4 py-2 bg-green-600 text-white rounded">Save to Dashboard</button>
-          <button onClick={copyToClipboard} className="px-4 py-2 bg-gray-600 text-white rounded">Copy Tasks</button>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <button 
+            onClick={saveAllToJira} 
+            className="px-4 py-2 bg-[#f69d9b] text-white rounded hover:bg-[#f69d9b]/90 transition-colors"
+          >
+            Save All to Jira
+          </button>
+          <button 
+            onClick={saveTasksToDashboard} 
+            className="px-4 py-2 bg-[#f69d9b]/80 text-white rounded hover:bg-[#f69d9b] transition-colors"
+          >
+            Save to Dashboard
+          </button>
+          <button 
+            onClick={copyToClipboard} 
+            className="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 transition-colors"
+          >
+            Copy Tasks
+          </button>
         </div>
       )}
     </div>

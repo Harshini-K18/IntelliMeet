@@ -294,6 +294,20 @@ function formatMomLine(text) {
 }
 
 function createDashboardHTML(data, charts = {}) {
+  // Format date and time
+  const now = new Date();
+  const options = { 
+    weekday: 'long', 
+    year: 'numeric', 
+    month: 'long', 
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZoneName: 'short'
+  };
+  const formattedDate = now.toLocaleDateString('en-US', options);
+  const [weekday, monthDayYear, timeZone] = formattedDate.split(',');
+  
   // charts: { barBase64, pieBase64, lineBase64 }
   const logoImgTag = UPLOADED_FILE_PATH ? `<img src="file://${escapeHtml(UPLOADED_FILE_PATH)}" alt="logo" style="height:48px;margin-left:10px;border-radius:6px;object-fit:cover;" />` : "";
 
@@ -321,66 +335,331 @@ function createDashboardHTML(data, charts = {}) {
     <meta charset="utf-8" />
     <title>IntelliMeet - Meeting Dashboard</title>
     <style>
-      body { font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial; color:#111; padding:20px; }
-      .header { display:flex; justify-content:space-between; align-items:flex-start; gap:20px; }
-      h1 { color:#0b62ff; margin:0; font-size:22px; display:inline-block; }
-      .meta { color:#555; font-size:13px; }
-      .section { margin-top:18px; }
-      .card { background:#fbfdff; border:1px solid #e6f0ff; padding:12px 14px; border-radius:8px; }
-      ul { margin:0; padding-left:18px; } li { margin-bottom:8px; }
-      .two-col { display:flex; gap:16px; flex-wrap:wrap; } .col { flex:1; min-width:260px; }
-      .small { font-size:13px; color:#666; } .transcript-line { margin-bottom:6px; font-size:13px; }
-      .footer { margin-top:26px; font-size:12px; color:#777; }
-      table { width:100%; border-collapse:collapse; margin-top:8px; }
-      table td, table th { padding:6px 8px; border:1px solid #e8eefc; text-align:left; font-size:13px; }
-      .badge { background:#eef6ff; color:#0b62ff; padding:4px 8px; border-radius:999px; font-size:12px; display:inline-block; }
-      @media print { .two-col { display:block; } }
+      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+      
+      body { 
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; 
+        color: #1f2937; 
+        line-height: 1.6;
+        padding: 24px;
+        background-color: #f9fafb;
+      }
+      
+      .header { 
+        display: flex; 
+        justify-content: space-between; 
+        align-items: center; 
+        margin-bottom: 24px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid #e5e7eb;
+      }
+      
+      .meeting-header {
+        margin-bottom: 32px;
+        background: #ffffff;
+        border-radius: 12px;
+        padding: 24px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        border: 1px solid #e5e7eb;
+      }
+      
+      .meeting-title {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: #111827;
+        margin: 0 0 8px 0;
+      }
+      
+      .meeting-date {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        color: #4b5563;
+        margin-bottom: 16px;
+      }
+      
+      .date-badge {
+        background: #f3f4f6;
+        color: #374151;
+        padding: 6px 12px;
+        border-radius: 6px;
+        font-size: 0.875rem;
+        font-weight: 500;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+      
+      .meta {
+        color: #6b7280;
+        font-size: 0.9rem;
+        display: flex;
+        gap: 16px;
+        margin-top: 8px;
+      }
+      
+      .section { 
+        margin: 32px 0; 
+      }
+      
+      .section-title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: #111827;
+        margin: 0 0 16px 0;
+        padding-bottom: 8px;
+        border-bottom: 2px solid #e5e7eb;
+      }
+      
+      .card { 
+        background: #ffffff; 
+        border: 1px solid #e5e7eb; 
+        padding: 20px; 
+        border-radius: 12px;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+      }
+      
+      ul { 
+        margin: 0; 
+        padding-left: 20px; 
+      }
+      
+      li { 
+        margin-bottom: 10px;
+        position: relative;
+        padding-left: 12px;
+      }
+      
+      li:before {
+        content: '•';
+        color: #3b82f6;
+        font-weight: bold;
+        position: absolute;
+        left: -8px;
+      }
+      
+      .two-col { 
+        display: flex; 
+        gap: 24px; 
+        flex-wrap: wrap; 
+      }
+      
+      .col { 
+        flex: 1; 
+        min-width: 280px; 
+      }
+      
+      .small { 
+        font-size: 0.875rem; 
+        color: #6b7280; 
+      }
+      
+      .transcript-line { 
+        margin-bottom: 8px; 
+        font-size: 0.9375rem;
+        line-height: 1.6;
+      }
+      
+      .footer { 
+        margin-top: 40px; 
+        font-size: 0.8125rem; 
+        color: #9ca3af;
+        text-align: center;
+        padding-top: 20px;
+        border-top: 1px solid #e5e7eb;
+      }
+      
+      table { 
+        width: 100%; 
+        border-collapse: separate;
+        border-spacing: 0;
+        margin: 16px 0;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+      }
+      
+      table th {
+        background-color: #f9fafb;
+        color: #374151;
+        font-weight: 600;
+        text-align: left;
+        padding: 12px 16px;
+        border-bottom: 1px solid #e5e7eb;
+      }
+      
+      table td { 
+        padding: 12px 16px;
+        border-bottom: 1px solid #f3f4f6;
+        vertical-align: top;
+      }
+      
+      table tr:last-child td {
+        border-bottom: none;
+      }
+      
+      .badge { 
+        background: #e0f2fe; 
+        color: #0369a1; 
+        padding: 4px 10px; 
+        border-radius: 999px; 
+        font-size: 0.75rem; 
+        font-weight: 500;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+      }
+      
+      @media print { 
+        .two-col { display: block; } 
+        body { padding: 0; }
+      }
     </style>
   </head>
   <body>
-    <div class="header">
-      <div>
-        <div style="display:flex;align-items:center;gap:8px">
-          <h1>IntelliMeet Dashboard</h1>
-        </div>
-        <div class="meta">Generated: ${new Date().toLocaleString()}</div>
+    <div class="meeting-header">
+      <h1 class="meeting-title">${escapeHtml(data.meetingTitle || "Meeting Summary")}</h1>
+      
+      <div class="meeting-date">
+        <span class="date-badge">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+            <line x1="16" y1="2" x2="16" y2="6"></line>
+            <line x1="8" y1="2" x2="8" y2="6"></line>
+            <line x1="3" y1="10" x2="21" y2="10"></line>
+          </svg>
+          ${monthDayYear.trim()}
+        </span>
+        <span class="date-badge">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <polyline points="12 6 12 12 16 14"></polyline>
+          </svg>
+          ${timeZone.trim()}
+        </span>
       </div>
-      <div class="small">
-        <div><strong>Meeting:</strong> ${escapeHtml(data.meetingTitle || "Untitled meeting")}</div>
-        <div><strong>Participants:</strong> ${(data.participants && data.participants.length) || 0}</div>
-        <div><strong>Duration:</strong> ${data.analytics?.duration ?? "N/A"} mins</div>
+      
+      <div class="meta">
+        <span><strong>Duration:</strong> ${data.meetingDuration || 'N/A'}</span>
+        <span><strong>Participants:</strong> ${(data.participants && data.participants.length) || 0}</span>
+        <span><strong>Generated:</strong> ${new Date().toLocaleString()}</span>
       </div>
     </div>
+    
+    <div class="section">
+      <h2 class="section-title">Minutes of Meeting</h2>
+      <div class="card">
+        <!-- Meeting Header -->
+        <div class="meeting-header" style="background: #f8fafc; padding: 20px; border-radius: 8px; margin-bottom: 24px;">
+          <h1 style="margin: 0 0 8px 0; color: #1e293b; font-size: 1.5rem;">${escapeHtml(data.meetingTitle || 'Meeting Minutes')}</h1>
+          <div style="display: flex; gap: 16px; color: #64748b; font-size: 0.9rem; margin-bottom: 12px;">
+            <div style="display: flex; align-items: center; gap: 4px;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="16" y1="2" x2="16" y2="6"></line>
+                <line x1="8" y1="2" x2="8" y2="6"></line>
+                <line x1="3" y1="10" x2="21" y2="10"></line>
+              </svg>
+              <span>${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 4px;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <polyline points="12 6 12 12 16 14"></polyline>
+              </svg>
+              <span>${data.meetingDuration || 'N/A'}</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 4px;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                <circle cx="9" cy="7" r="4"></circle>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+              </svg>
+              <span>${(data.participants && data.participants.length) || 0} Participants</span>
+            </div>
+          </div>
+        </div>
 
-    <!-- REMOVED SUMMARY SECTION -->
+        <!-- Meeting Minutes Content -->
+        <div class="mom-content">
+          <h3 style="color: #1e293b; margin: 24px 0 12px 0; font-size: 1.25rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px;">
+            Discussion Points
+          </h3>
+          <ul style="margin: 0; padding-left: 20px; list-style-type: none;">
+            ${Array.isArray(data.mom) && data.mom.length
+              ? data.mom.map((item, index) => `
+                <li style="margin-bottom: 12px; padding-left: 12px; border-left: 3px solid #3b82f6;">
+                  <div style="font-weight: 500; color: #1e293b;">${formatMomLine(item)}</div>
+                </li>`).join("")
+              : "<li style='color: #64748b; font-style: italic;'>No discussion points recorded</li>"
+            }
+          </ul>
+
+          ${Array.isArray(data.actionItems) && data.actionItems.length > 0 ? `
+            <h3 style="color: #1e293b; margin: 28px 0 12px 0; font-size: 1.25rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px;">
+              Action Items
+            </h3>
+            <ul style="margin: 0; padding-left: 20px; list-style-type: none;">
+              ${data.actionItems.map(item => `
+                <li style="margin-bottom: 10px; display: flex; align-items: flex-start; gap: 8px;">
+                  <span style="display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 4px; background: #f0f9ff; color: #0369a1; flex-shrink: 0; margin-top: 2px;">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                      <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                  </span>
+                  <span>${escapeHtml(item)}</span>
+                </li>
+              `).join('')}
+            </ul>
+          ` : ''}
+
+          ${Array.isArray(data.tasks) && data.tasks.length > 0 ? `
+            <h3 style="color: #1e293b; margin: 28px 0 12px 0; font-size: 1.25rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px;">
+              Decisions
+            </h3>
+            <ul style="margin: 0; padding-left: 20px; list-style-type: none;">
+              ${data.tasks.map(task => {
+                const taskText = escapeHtml(task.task || '');
+                const assignedText = task.assigned_to ? ` <span style="color: #64748b; font-size: 0.9em;">(Assigned to: ${escapeHtml(task.assigned_to)})</span>` : '';
+                const deadlineText = task.deadline ? ` <span style="color: #64748b; font-size: 0.9em;">(Due: ${escapeHtml(task.deadline)})</span>` : '';
+                return `
+                  <li style="margin-bottom: 10px; padding-left: 8px; border-left: 3px solid #10b981; padding-left: 12px;">
+                    <div style="font-weight: 500; color: #1e293b;">${taskText}</div>
+                    <div style="color: #64748b; font-size: 0.9em; margin-top: 4px;">
+                      ${assignedText} ${deadlineText}
+                    </div>
+                  </li>`;
+              }).join('')}
+            </ul>
+          ` : ''}
+        </div>
+      </div>
+    </div>
 
     <div class="section two-col">
-  <div class="col">
-    <h2>Minutes of Meeting (MoM)</h2>
-    <div class="card">
-      <ul>
-        ${
-          Array.isArray(data.mom) && data.mom.length
-            ? data.mom
-                .map(m => formatMomLine(m))
-                .join("")
-            : "<li>No MoM generated</li>"
-        }
-      </ul>
-    </div>
-  </div>
-
       <div class="col">
         <h2>Action Items & Tasks</h2>
         <div class="card">
           <strong>Action Items</strong>
           <ul>
-            ${Array.isArray(data.actionItems) && data.actionItems.length ? data.actionItems.map(i => `<li>${escapeHtml(i)}</li>`).join("") : "<li>None</li>"}
+            ${Array.isArray(data.actionItems) && data.actionItems.length 
+              ? data.actionItems.map(i => `<li>${escapeHtml(i)}</li>`).join("") 
+              : "<li>None</li>"
+            }
           </ul>
 
           <strong style="display:block;margin-top:8px;">Tasks</strong>
           <ul>
-            ${Array.isArray(data.tasks) && data.tasks.length ? data.tasks.map(t => `<li>${escapeHtml(t.task || "")}${t.assigned_to ? ` — ${escapeHtml(t.assigned_to)}` : ""}${t.deadline ? ` (by ${escapeHtml(t.deadline)})` : ""}</li>`).join("") : "<li>None</li>"}
+            ${Array.isArray(data.tasks) && data.tasks.length 
+              ? data.tasks.map(t => {
+                  const taskText = escapeHtml(t.task || "");
+                  const assignedText = t.assigned_to ? ` — ${escapeHtml(t.assigned_to)}` : "";
+                  const deadlineText = t.deadline ? ` (by ${escapeHtml(t.deadline)})` : "";
+                  return `<li>${taskText}${assignedText}${deadlineText}</li>`;
+                }).join("") 
+              : "<li>None</li>"
+            }
           </ul>
         </div>
       </div>

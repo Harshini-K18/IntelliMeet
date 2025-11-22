@@ -68,7 +68,7 @@ export default function FinishMeetingButton({ onDashboardGenerated, tasks }) {
 
       <button
         onClick={() => setShowPopup(true)}
-        className="px-6 py-3 bg-blue-600 text-white rounded-lg shadow hover:bg-blue-700 transition"
+        className="px-6 py-3 bg-[#f69d9b] text-white rounded-lg shadow hover:bg-[#f69d9b]/90 transition"
       >
         Send Dashboard & Finish Meeting
       </button>
@@ -95,7 +95,7 @@ export default function FinishMeetingButton({ onDashboardGenerated, tasks }) {
                 />
                 {emails.length > 1 && (
                   <button
-                    className="px-3 py-1 bg-red-500 text-white rounded-md"
+                    className="px-3 py-1 bg-red-400 text-white rounded-md hover:bg-red-500"
                     onClick={() => removeEmail(index)}
                   >
                     X
@@ -113,14 +113,14 @@ export default function FinishMeetingButton({ onDashboardGenerated, tasks }) {
 
             <button
               onClick={handleFinishMeeting}
-              className="w-full py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition mb-2"
+              className="w-full py-2 bg-[#f69d9b] text-white rounded-md hover:bg-[#f69d9b]/90 transition mb-2"
             >
               {loading ? "Sending..." : "Send & Finish"}
             </button>
 
             <button
               onClick={() => setShowPopup(false)}
-              className="w-full py-2 bg-gray-300 dark:bg-gray-700 rounded-md hover:bg-gray-400 dark:hover:bg-gray-600 transition"
+              className="w-full py-2 bg-gray-200 dark:bg-gray-600 rounded-md hover:bg-gray-300 dark:hover:bg-gray-500 transition"
             >
               Cancel
             </button>

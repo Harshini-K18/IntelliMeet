@@ -13,9 +13,9 @@ module.exports = {
         // Light Mode Palette
         'light-bg': '#FCF9EA',
         'light-card': '#b5cddaff',
-        'light-accent': '#fbb0b0ff',
-        'light-text': '#3d2c22',
-        'light-highlight': '#d873cbff',
+        'light-accent': '#fd9d9dff',
+        'light-text': '#3d222aff',
+        'light-highlight': '#f69d9bf8',
 
         // Dark Mode Palette
         'dark-bg': '#020202ff',
