@@ -1,4 +1,3 @@
-// backend/utils/taskExtractor.js
 const axios = require("axios");
 
 /* -------------------------
@@ -32,16 +31,25 @@ const parseLineWithSpeaker = (line) => {
 };
 
 /* -------------------------
-   Rule-based extractor (REMOVED)
-   -------------------------*/
-
-/* -------------------------
    Ollama (LLM) fallback
    -------------------------*/
 const resolveOllamaEndpoint = () => process.env.OLLAMA_ENDPOINT || "http://localhost:11434/api/generate";
 
 const callOllamaForTasks = async (transcript) => {
-  const prompt = `You are an assistant that extracts meeting action items.\nReturn a JSON array ONLY. Each item: { "task": "...", "assigned_to": "...", "deadline": "...", "timestamp": "..." }\nTranscript:\n${transcript}\n-- Respond with JSON array and nothing else.`;
+  const lines = transcript.split('\n').map(l => l.trim()).filter(Boolean);
+  const speakers = [...new Set(lines.map(l => parseLineWithSpeaker(l).speaker).filter(Boolean))];
+  const currentYear = new Date().getFullYear();
+
+  const prompt = `You are an assistant that extracts meeting action items from a transcript.
+The current year is ${currentYear}. ALL deadlines MUST be in the current year (${currentYear}) unless a different year is explicitly mentioned in the transcript. When a month and day are mentioned for a deadline, the year MUST be ${currentYear}.
+Your response MUST be a JSON array of objects. Do not include any other text.
+Each object in the array represents a single task and MUST have the following format: { "task": "The task description", "original_line": "The exact, unmodified line from the transcript that this task was derived from", "assigned_to": "Person's Name", "deadline": "YYYY-MM-DD or None", "labels": ["label1", "label2", ...] }
+The following people attended the meeting: ${speakers.join(', ')}. You MUST assign tasks to one of these people if an assignee is mentioned or implied. If no one is assigned, use "Unassigned".
+For the "labels" field, you can use values like "bug", "feature", "urgent", "question", etc.
+The "original_line" field is mandatory and must contain the verbatim transcript line.
+Transcript is provided below.
+${transcript}`.trim();
+
   const endpoint = resolveOllamaEndpoint();
   const model = process.env.OLLAMA_MODEL || "gemma:2b";
   const tryBodies = [{ model, prompt, stream: false }, { model, input: prompt, stream: false }, { prompt, stream: false }];
@@ -57,21 +65,7 @@ const callOllamaForTasks = async (transcript) => {
       } else if (resp.data.response) {
         txt = resp.data.response;
       } else if (typeof resp.data === "string") {
-        const lines = resp.data.trim().split('\n');
-        const responseParts = [];
-        let isStream = false;
-        for (const line of lines) {
-          try {
-            const parsed = JSON.parse(line);
-            if (parsed.response) {
-              responseParts.push(parsed.response);
-              isStream = true;
-            }
-          } catch (e) {
-            continue;
-          }
-        }
-        txt = isStream ? responseParts.join('') : resp.data;
+        txt = resp.data;
       } else if (resp.data.output) {
         txt = Array.isArray(resp.data.output) ? resp.data.output.map(o => o.text || "").join("\n") : String(resp.data.output);
       } else if (resp.data.choices && resp.data.choices.length) {
@@ -86,12 +80,13 @@ const callOllamaForTasks = async (transcript) => {
         jsonString = jsonMatch[1].trim();
       }
 
+      // Try parse directly
       try {
         const parsed = JSON.parse(jsonString);
         const tasks = Array.isArray(parsed) ? parsed : [parsed];
         return tasks.map(t => ({ ...t, source: 'llm' }));
       } catch (e) {
-        // Fallback for embedded JSON
+        // Fallback for embedded JSON arrays or objects inside text
         const firstBracket = jsonString.indexOf('[');
         const lastBracket = jsonString.lastIndexOf(']');
         if (firstBracket !== -1 && lastBracket > firstBracket) {
@@ -111,6 +106,7 @@ const callOllamaForTasks = async (transcript) => {
       }
 
       if (txt && txt.trim()) {
+        // If LLM returned free text, treat as one raw item
         return [{ task: txt.trim(), assigned_to: null, deadline: null, timestamp: null, source: "llm-raw" }];
       }
     } catch (err) {
@@ -125,10 +121,55 @@ const callOllamaForTasks = async (transcript) => {
 /* -------------------------
    Public extractTasks function
    -------------------------*/
-const extractTasks = async (transcript) => {
-  if (!transcript || !transcript.trim()) return [];
+const extractTasks = async (transcriptInput) => {
+  if (!transcriptInput) return [];
+
+  // Accept either:
+  // - an array of objects / lines
+  // - a string formatted transcript
+  let transcript = "";
+  if (Array.isArray(transcriptInput)) {
+    // join array into formatted lines (try to preserve speaker if present)
+    transcript = transcriptInput
+      .map(t => {
+        if (!t) return "";
+        if (typeof t === "string") return t;
+        const speaker = t.speaker || t.participant || t.owner || "";
+        const text = t.text || t.transcript || t.chunk || "";
+        const ts = t.timestamp ? ` [${t.timestamp}]` : "";
+        return `${speaker ? `${speaker}: ` : ""}${text}${ts}`.trim();
+      })
+      .filter(Boolean)
+      .join("\n");
+  } else if (typeof transcriptInput === "string") {
+    transcript = transcriptInput.trim();
+  } else {
+    transcript = String(transcriptInput);
+  }
+
+  if (!transcript) return [];
+
   try {
-    return await callOllamaForTasks(transcript);
+    const tasks = await callOllamaForTasks(transcript);
+
+    const now = new Date();
+    let taskIdCounter = 1;
+    const enriched = tasks.map((t) => {
+      const parsedLine = t.original_line ? parseLineWithSpeaker(t.original_line) : {};
+
+      return {
+        ...t,
+        task_id: t.task_id || `task-${Date.now()}-${taskIdCounter++}`,
+        original_line: t.original_line || t.task,
+        extraction_time: now.toLocaleTimeString(),
+        owner: t.assigned_to || parsedLine.speaker || 'Unassigned',
+        deadline: t.deadline || null,
+        speaker: parsedLine.speaker || t.speaker || null,
+        timestamp: parsedLine.timestamp || t.timestamp || null,
+      };
+    });
+
+    return enriched;
   } catch (err) {
     console.error("extractTasks fatal error:", err?.message || err);
     return [];
@@ -143,16 +184,12 @@ const generateSaveButtons = (tasks = [], { projectName = "Meeting tasks", descri
   const descLines = [];
   if (description) descLines.push(description);
   tasks.forEach((t, i) => {
-    descLines.push(`${i + 1}. ${t.task}${t.assigned_to ? ` — ${t.assigned_to}` : ""}${t.deadline ? ` (by ${t.deadline})` : ""}`);
+    descLines.push(`${i + 1}. ${t.task}${t.assigned_to ? ` — ${t.assigned_to}` : ""}${t.deadline ? ` (by ${t.deadline})` : ""}${t.speaker ? ` — ${t.speaker}` : ""}${t.timestamp ? ` (${t.timestamp})` : ""}`);
   });
   const desc = descLines.join("\n");
-  const trelloBody = { name: title, desc };
-  const asanaBody = { name: title, notes: desc };
   const mailtoBody = `subject=${encodeURIComponent(title)}&body=${encodeURIComponent(desc)}`;
   const mailtoUrl = `mailto:?${mailtoBody}`;
   return [
-    { label: "Save to Trello (server-side)", type: "trello", method: "POST", url: "/api/save-to-trello", body: trelloBody, note: "Server needs Trello key/token and idList. Do server-side only." },
-    { label: "Save to Asana (server-side)", type: "asana", method: "POST", url: "/api/save-to-ana", body: asanaBody, note: "Server needs Asana PAT and project/workspace id. Do server-side only." },
     { label: "Email tasks", type: "mailto", method: "GET", url: mailtoUrl, note: "Opens user's mail client." },
   ];
 };

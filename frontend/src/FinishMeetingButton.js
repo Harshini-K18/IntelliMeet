@@ -1,7 +1,9 @@
 import React, { useState } from "react";
 import axios from "axios";
 
-export default function FinishMeetingButton({ onDashboardGenerated }) {
+export default function FinishMeetingButton({ onDashboardGenerated, tasks }) {
+  // 👆 IMPORTANT: receive tasks from parent (App.js)
+
   const [showPopup, setShowPopup] = useState(false);
   const [emails, setEmails] = useState([""]);
   const [successMsg, setSuccessMsg] = useState("");
@@ -34,20 +36,27 @@ export default function FinishMeetingButton({ onDashboardGenerated }) {
         return;
       }
 
+      // 1️⃣ SEND PARTICIPANTS FIRST
       await axios.post("http://localhost:3001/participants", {
         meetingId: "default",
         emails: cleanEmails,
       });
 
+      // 2️⃣ SEND FRONTEND TASKS TO BACKEND (NEW & IMPORTANT)
+      await axios.post("http://localhost:3001/api/store-frontend-tasks", {
+        tasks: tasks || [],
+      });
+
+      // 3️⃣ FINISH MEETING → TRIGGER DASHBOARD + EMAIL
       const response = await axios.post("http://localhost:3001/finish-meeting");
 
       if (response.data?.ok) {
         setSuccessMsg("Dashboard generated & emails sent!");
 
-        // 🔥 Notifies App.js so Download button appears
         if (onDashboardGenerated) onDashboardGenerated();
       }
     } catch (err) {
+      console.error(err);
       setErrorMsg("Error finishing meeting. Try again.");
     }
 
@@ -64,17 +73,9 @@ export default function FinishMeetingButton({ onDashboardGenerated }) {
         Send Dashboard & Finish Meeting
       </button>
 
-      {/* SUCCESS */}
-      {successMsg && (
-        <p className="text-green-600 mt-3 font-semibold">{successMsg}</p>
-      )}
+      {successMsg && <p className="text-green-600 mt-3 font-semibold">{successMsg}</p>}
+      {errorMsg && <p className="text-red-600 mt-3 font-semibold">{errorMsg}</p>}
 
-      {/* ERROR */}
-      {errorMsg && (
-        <p className="text-red-600 mt-3 font-semibold">{errorMsg}</p>
-      )}
-
-      {/* POPUP */}
       {showPopup && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center">
           <div className="bg-white dark:bg-dark-card p-6 rounded-lg shadow-lg w-96">

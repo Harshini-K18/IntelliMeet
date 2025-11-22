@@ -1,4 +1,4 @@
-// index.js — Final merged backend (Option A: frontend supplies emails when finishing meeting)
+// index.js — Backend with Jira integration + server-side charts embedded into dashboard
 console.log("FILE LOADED!");
 
 require("dotenv").config();
@@ -15,10 +15,18 @@ const nodemailer = require("nodemailer");
 const puppeteer = require("puppeteer");
 const http = require("http");
 const { Server } = require("socket.io");
+const path = require("path");
+
+// Chart rendering
+const { ChartJSNodeCanvas } = require("chartjs-node-canvas");
 
 // ---------- use your existing utils (do not overwrite) ----------
-const { extractTasks } = require("./utils/taskExtractor"); // keep old extractor
-const { addTranscript, getTranscript, takenotes, generateMomWithOllama } = require("./utils/takeNotes");
+const { extractTasks } = require("./utils/taskExtractor");
+const takeNotesUtils = require("./utils/takeNotes");
+const addTranscript = takeNotesUtils.addTranscript;
+const getTranscript = takeNotesUtils.getTranscript;
+const takenotes = takeNotesUtils.takenotes;
+const generateMomWithOllama = takeNotesUtils.generateMomWithOllama;
 
 // ---------- in-memory storage ----------
 let TRANSCRIPT_STORE = []; // local backup
@@ -26,24 +34,8 @@ const participantsByMeeting = new Map();
 let lastDashboardHTML = "";
 let lastDashboardTimestamp = null;
 
-// If your utils already implement addTranscript/getTranscript, we still keep local backup in case
-function addTranscriptLocal(entry) {
-  if (!entry) return;
-  if (typeof entry === "string") {
-    TRANSCRIPT_STORE.push({ speaker: "", text: entry, timestamp: new Date().toISOString(), timestamp_unix: Math.floor(Date.now() / 1000) });
-  } else {
-    const obj = Object.assign({}, entry);
-    obj.timestamp = obj.timestamp || new Date().toISOString();
-    obj.timestamp_unix = obj.timestamp_unix || Math.floor(new Date(obj.timestamp).getTime() / 1000);
-    TRANSCRIPT_STORE.push(obj);
-  }
-}
-function getTranscriptLocal() {
-  return TRANSCRIPT_STORE;
-}
-function clearTranscriptLocal() {
-  TRANSCRIPT_STORE = [];
-}
+// ---------- helper to reference uploaded file (dev instruction) ----------
+const UPLOADED_FILE_PATH = "/mnt/data/de8939b0-df46-45c9-8fb3-aba10a6b6250.png";
 
 // ---------- helpers ----------
 function escapeHtml(text) {
@@ -58,7 +50,22 @@ function detectPlatform(url) {
   return "Unknown";
 }
 
-// ---------- sanitize possible streaming output from Ollama-like responses ----------
+// local transcript backup helpers
+function addTranscriptLocal(entry) {
+  if (!entry) return;
+  if (typeof entry === "string") {
+    TRANSCRIPT_STORE.push({ speaker: "", text: entry, timestamp: new Date().toISOString(), timestamp_unix: Math.floor(Date.now() / 1000) });
+  } else {
+    const obj = Object.assign({}, entry);
+    obj.timestamp = obj.timestamp || new Date().toISOString();
+    obj.timestamp_unix = obj.timestamp_unix || Math.floor(new Date(obj.timestamp).getTime() / 1000);
+    TRANSCRIPT_STORE.push(obj);
+  }
+}
+function getTranscriptLocal() { return TRANSCRIPT_STORE; }
+function clearTranscriptLocal() { TRANSCRIPT_STORE = []; }
+
+// ---------- model-output sanitizers & wrappers ----------
 function sanitizeModelOutput(raw) {
   if (!raw && raw !== "") return "";
   if (typeof raw !== "string") {
@@ -85,9 +92,7 @@ function sanitizeModelOutput(raw) {
         }
         const m = ln.match(/"response"\s*:\s*"([^"]*)"/);
         if (m && m[1]) collected += m[1];
-      } catch (e) {
-        // ignore
-      }
+      } catch (e){}
     }
     if (collected.trim().length) return collected.replace(/\s+/g, " ").trim();
   }
@@ -96,7 +101,6 @@ function sanitizeModelOutput(raw) {
   return raw.replace(/\s+/g, " ").trim();
 }
 
-// ---------- Ollama-safe wrappers ----------
 async function safeTakenotes(fullText) {
   try {
     const res = await Promise.resolve(takenotes(fullText));
@@ -152,8 +156,165 @@ async function safeExtractTasks(fullText) {
   }
 }
 
-// ---------- Dashboard HTML template ----------
-function createDashboardHTML(data) {
+// ---------- Chart generation ----------
+// We'll build three charts:
+//  - bar chart: messages per speaker (counts)
+//  - pie chart: share of messages per speaker
+//  - line chart: messages over time (per minute)
+const chartWidth = 800;
+const chartHeight = 420;
+const chartBackground = 'white';
+
+const chartRenderer = new ChartJSNodeCanvas({
+  width: chartWidth,
+  height: chartHeight,
+  backgroundColour: chartBackground,
+  chartCallback: (ChartJS) => {
+    // you may register plugins or fonts here if needed
+  },
+});
+
+function aggregateSpeakerCounts(transcriptArray) {
+  const counts = {};
+  transcriptArray.forEach(t => {
+    const speaker = (t.speaker || "Unknown").toString();
+    counts[speaker] = (counts[speaker] || 0) + 1;
+  });
+  return counts;
+}
+
+function aggregateMessagesOverTime(transcriptArray) {
+  // Group messages by minute (YYYY-MM-DDTHH:MM)
+  const buckets = {};
+  transcriptArray.forEach(t => {
+    const ts = t.timestamp ? new Date(t.timestamp) : new Date();
+    if (isNaN(ts.getTime())) return;
+    const key = ts.toISOString().slice(0,16); // YYYY-MM-DDTHH:MM
+    buckets[key] = (buckets[key] || 0) + 1;
+  });
+  const sortedKeys = Object.keys(buckets).sort();
+  return { keys: sortedKeys, values: sortedKeys.map(k => buckets[k]) };
+}
+
+async function generateChartsImages(transcriptArray = []) {
+  // Prepare data
+  const speakerCounts = aggregateSpeakerCounts(transcriptArray);
+  const speakers = Object.keys(speakerCounts);
+  const counts = speakers.map(s => speakerCounts[s]);
+
+  // Bar chart config (messages per speaker)
+  const barConfig = {
+    type: 'bar',
+    data: {
+      labels: speakers,
+      datasets: [{
+        label: 'Messages',
+        data: counts,
+        // default colors left to Chart.js; node canvas will pick defaults
+      }]
+    },
+    options: {
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { title: { display: true, text: 'Speaker' } },
+        y: { title: { display: true, text: 'Messages' }, beginAtZero: true }
+      }
+    }
+  };
+
+  // Pie chart config (share)
+  const pieConfig = {
+    type: 'pie',
+    data: {
+      labels: speakers,
+      datasets: [{
+        data: counts,
+      }]
+    },
+    options: {
+      plugins: { legend: { position: 'right' } }
+    }
+  };
+
+  // Line chart config (activity over time)
+  const timeAgg = aggregateMessagesOverTime(transcriptArray);
+  const lineConfig = {
+    type: 'line',
+    data: {
+      labels: timeAgg.keys,
+      datasets: [{
+        label: 'Messages per minute',
+        data: timeAgg.values,
+        fill: false,
+        tension: 0.2
+      }]
+    },
+    options: {
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { title: { display: true, text: 'Time (YYYY-MM-DDTHH:MM)' } },
+        y: { title: { display: true, text: 'Messages' }, beginAtZero: true }
+      }
+    }
+  };
+
+  // Render to buffers (PNG) and convert to base64
+  const barBuffer = await chartRenderer.renderToBuffer(barConfig);
+  const pieBuffer = await chartRenderer.renderToBuffer(pieConfig);
+  const lineBuffer = await chartRenderer.renderToBuffer(lineConfig);
+
+  return {
+    barBase64: barBuffer.toString('base64'),
+    pieBase64: pieBuffer.toString('base64'),
+    lineBase64: lineBuffer.toString('base64'),
+  };
+}
+
+// ---------- Dashboard HTML template & PDF generator ----------
+function formatMomLine(text) {
+  if (!text) return "";
+
+  let t = text;
+
+  // Convert markdown bold (**text**) → <strong>text</strong>
+  t = t.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+
+  // Convert markdown headings (## Title) → <strong>Title</strong>
+  t = t.replace(/^#+\s*(.*)/g, "<strong>$1</strong>");
+
+  // Convert "- bullet" → clean bullet text
+  t = t.replace(/^-+\s*/g, "");
+
+  // Remove backticks or artifacts
+  t = t.replace(/`+/g, "");
+
+  t = t.trim();
+
+  return `<li>${t}</li>`;
+}
+
+function createDashboardHTML(data, charts = {}) {
+  // charts: { barBase64, pieBase64, lineBase64 }
+  const logoImgTag = UPLOADED_FILE_PATH ? `<img src="file://${escapeHtml(UPLOADED_FILE_PATH)}" alt="logo" style="height:48px;margin-left:10px;border-radius:6px;object-fit:cover;" />` : "";
+
+  const chartsHtml = `
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:14px;">
+      <div style="flex:1;min-width:260px">
+        <h3 style="margin:0 0 6px 0;font-size:14px">Messages per speaker</h3>
+        ${charts.barBase64 ? `<img style="max-width:100%;" src="data:image/png;base64,${charts.barBase64}" />` : "<div style='color:#666'>No data</div>"}
+      </div>
+      <div style="flex:1;min-width:260px">
+        <h3 style="margin:0 0 6px 0;font-size:14px">Share by speaker</h3>
+        ${charts.pieBase64 ? `<img style="max-width:100%;" src="data:image/png;base64,${charts.pieBase64}" />` : "<div style='color:#666'>No data</div>"}
+      </div>
+      <div style="width:100%;margin-top:12px">
+        <h3 style="margin:0 0 6px 0;font-size:14px">Activity over time</h3>
+        ${charts.lineBase64 ? `<img style="max-width:100%;" src="data:image/png;base64,${charts.lineBase64}" />` : "<div style='color:#666'>No data</div>"}
+      </div>
+    </div>
+  `;
+
+  // previous HTML template with charts inserted
   return `
   <html>
   <head>
@@ -162,16 +323,13 @@ function createDashboardHTML(data) {
     <style>
       body { font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial; color:#111; padding:20px; }
       .header { display:flex; justify-content:space-between; align-items:flex-start; gap:20px; }
-      h1 { color:#0b62ff; margin:0; font-size:22px; }
+      h1 { color:#0b62ff; margin:0; font-size:22px; display:inline-block; }
       .meta { color:#555; font-size:13px; }
       .section { margin-top:18px; }
       .card { background:#fbfdff; border:1px solid #e6f0ff; padding:12px 14px; border-radius:8px; }
-      ul { margin:0; padding-left:18px; }
-      li { margin-bottom:8px; }
-      .two-col { display:flex; gap:16px; flex-wrap:wrap; }
-      .col { flex:1; min-width:260px; }
-      .small { font-size:13px; color:#666; }
-      .transcript-line { margin-bottom:6px; font-size:13px; }
+      ul { margin:0; padding-left:18px; } li { margin-bottom:8px; }
+      .two-col { display:flex; gap:16px; flex-wrap:wrap; } .col { flex:1; min-width:260px; }
+      .small { font-size:13px; color:#666; } .transcript-line { margin-bottom:6px; font-size:13px; }
       .footer { margin-top:26px; font-size:12px; color:#777; }
       table { width:100%; border-collapse:collapse; margin-top:8px; }
       table td, table th { padding:6px 8px; border:1px solid #e8eefc; text-align:left; font-size:13px; }
@@ -182,7 +340,9 @@ function createDashboardHTML(data) {
   <body>
     <div class="header">
       <div>
-        <h1>IntelliMeet Dashboard</h1>
+        <div style="display:flex;align-items:center;gap:8px">
+          <h1>IntelliMeet Dashboard</h1>
+        </div>
         <div class="meta">Generated: ${new Date().toLocaleString()}</div>
       </div>
       <div class="small">
@@ -192,20 +352,23 @@ function createDashboardHTML(data) {
       </div>
     </div>
 
-    <div class="section">
-      <h2>Summary</h2>
-      <div class="card">${escapeHtml(data.summary || "No summary available.")}</div>
-    </div>
+    <!-- REMOVED SUMMARY SECTION -->
 
     <div class="section two-col">
-      <div class="col">
-        <h2>Minutes of Meeting (MoM)</h2>
-        <div class="card">
-          <ul>
-            ${Array.isArray(data.mom) && data.mom.length ? data.mom.map(i => `<li>${escapeHtml(i)}</li>`).join("") : "<li>No MoM generated</li>"}
-          </ul>
-        </div>
-      </div>
+  <div class="col">
+    <h2>Minutes of Meeting (MoM)</h2>
+    <div class="card">
+      <ul>
+        ${
+          Array.isArray(data.mom) && data.mom.length
+            ? data.mom
+                .map(m => formatMomLine(m))
+                .join("")
+            : "<li>No MoM generated</li>"
+        }
+      </ul>
+    </div>
+  </div>
 
       <div class="col">
         <h2>Action Items & Tasks</h2>
@@ -223,10 +386,12 @@ function createDashboardHTML(data) {
       </div>
     </div>
 
+    <!-- ANALYTICS SECTION -->
     <div class="section">
       <h2>Analytics</h2>
       <div class="card">
-        <table>
+        ${chartsHtml}
+        <table style="margin-top:12px;">
           <tr><th>Metric</th><th>Value</th></tr>
           <tr><td>Participants</td><td>${data.analytics?.participantCount || 0}</td></tr>
           <tr><td>Messages</td><td>${data.analytics?.messageCount || 0}</td></tr>
@@ -236,12 +401,7 @@ function createDashboardHTML(data) {
       </div>
     </div>
 
-    <div class="section">
-      <h2>Important Notes</h2>
-      <div class="card">
-        <ul>${Array.isArray(data.notes) && data.notes.length ? data.notes.map(n => `<li>${escapeHtml(n)}</li>`).join("") : "<li>No notes</li>"}</ul>
-      </div>
-    </div>
+    <!-- REMOVED IMPORTANT NOTES SECTION -->
 
     <div class="section">
       <h2>Transcript (last 500 lines)</h2>
@@ -258,9 +418,9 @@ function createDashboardHTML(data) {
   </body>
   </html>
   `;
+
 }
 
-// ---------- PDF generator ----------
 async function generatePDFBuffer(htmlContent) {
   const launchOptions = { headless: "new", args: ["--no-sandbox", "--disable-setuid-sandbox"] };
   const browser = await puppeteer.launch(launchOptions);
@@ -274,14 +434,13 @@ async function generatePDFBuffer(htmlContent) {
   }
 }
 
-// ---------- email helper ----------
+// ---------- Email helper ----------
 async function sendDashboardEmail({ pdfBuffer, htmlBody, subject = "IntelliMeet Dashboard", recipients = [] }) {
   if (!Array.isArray(recipients) || recipients.length === 0) {
     console.warn("No recipients provided for dashboard email.");
     return null;
   }
 
-  // dedupe & sanitize
   const unique = Array.from(new Set(recipients.map(r => (r || "").trim()).filter(Boolean)));
   if (unique.length === 0) {
     console.warn("No valid recipient emails after sanitization.");
@@ -334,6 +493,7 @@ function computeAnalytics(transcriptArray) {
   const top = Object.entries(counts).sort((a,b) => b[1]-a[1])[0];
   analytics.topSpeaker = top ? top[0] : null;
   if (firstTs < Infinity && lastTs > -Infinity) analytics.duration = Math.round((lastTs - firstTs) / 60000);
+  analytics.rawCounts = counts;
   return analytics;
 }
 
@@ -342,10 +502,10 @@ async function endMeetingWorkflow({ recallPayload = null, meetingId = null } = {
   try {
     console.log("Starting endMeetingWorkflow for meetingId:", meetingId);
 
-    // get transcript from your utils if available, else from local store
+    // get transcript
     let rawTranscript;
     try {
-      rawTranscript = await Promise.resolve(getTranscript()); // your utils.getTranscript() if present
+      rawTranscript = await Promise.resolve(getTranscript());
     } catch (e) {
       rawTranscript = getTranscriptLocal();
     }
@@ -356,26 +516,40 @@ async function endMeetingWorkflow({ recallPayload = null, meetingId = null } = {
     } else if (typeof rawTranscript === "string" && rawTranscript.trim() !== "") {
       transcriptArray = rawTranscript.split("\n").map(line => ({ speaker: "", text: line, timestamp: new Date().toISOString(), timestamp_unix: Math.floor(Date.now()/1000) }));
     } else {
-      // try local store fallback
       transcriptArray = getTranscriptLocal();
     }
 
     const fullText = transcriptArray.map(t => t.text || "").join("\n");
 
-    // notes (sanitized)
     const notes = await safeTakenotes(fullText);
-
-    // mom (sanitized)
     const mom = await safeGenerateMom(fullText);
 
-    // tasks (keep old extractor but sanitize)
-    const tasks = await safeExtractTasks(fullText);
-    const actionItems = Array.isArray(tasks) ? tasks.map(t => t.task || "").filter(Boolean) : [];
+    // Use frontend-provided tasks (if any) else run extractor
+    let tasks = [];
+    try {
+      if (Array.isArray(FRONTEND_TASKS) && FRONTEND_TASKS.length) {
+        tasks = FRONTEND_TASKS;
+      } else {
+        tasks = await safeExtractTasks(fullText);
+      }
+    } catch (err) {
+      console.error("task extraction error:", err);
+      tasks = [];
+    }
 
-    // analytics
+    const actionItems = Array.isArray(tasks) ? tasks.map(t => t.task || "").filter(Boolean) : [];
     const analytics = computeAnalytics(transcriptArray);
 
-    // participants (use recall payload or stored)
+    // Generate charts (server-side) and inject base64 images
+    let charts = {};
+    try {
+      charts = await generateChartsImages(transcriptArray || []);
+    } catch (err) {
+      console.error("chart generation error:", err);
+      charts = {};
+    }
+
+    // participants (recallPayload -> stored -> env default)
     let participants = [];
     if (recallPayload) {
       const pFromPayload = recallPayload.data?.participants || recallPayload.participants || recallPayload.data?.events || [];
@@ -404,14 +578,14 @@ async function endMeetingWorkflow({ recallPayload = null, meetingId = null } = {
       participants,
     };
 
-    const html = createDashboardHTML(dashboardData);
+    const html = createDashboardHTML(dashboardData, charts);
     lastDashboardHTML = html;
     lastDashboardTimestamp = Date.now();
     console.log("Dashboard HTML saved for /dashboard");
 
     const pdfBuffer = await generatePDFBuffer(html);
 
-    // send emails if participants (best-effort)
+    // send emails if participants
     let emailResult = null;
     if (participants && participants.length) {
       try {
@@ -423,6 +597,9 @@ async function endMeetingWorkflow({ recallPayload = null, meetingId = null } = {
     } else {
       console.warn("No participants detected; skipping email (or using DEFAULT_PARTICIPANTS).");
     }
+
+    // Clear FRONTEND_TASKS after use (optional)
+    FRONTEND_TASKS = [];
 
     return { success: true, dashboardData, emailed: emailResult ? emailResult.recipients : [] };
   } catch (err) {
@@ -440,7 +617,7 @@ app.use(cors());
 app.use(express.json({ limit: "16mb" }));
 app.use(bodyParser.json({ limit: "16mb" }));
 
-// recall client (if used)
+// recall client
 const RECALL_BASE_URL = process.env.RECALL_BASE_URL || "https://api.recall.ai/v1";
 const recall = axios.create({
   baseURL: RECALL_BASE_URL,
@@ -448,8 +625,7 @@ const recall = axios.create({
   timeout: 30000,
 });
 
-// ---------- convenience participant endpoints (frontend can POST attendee emails) ----------
-// POST /participants  => { meetingId: "...", emails: ["a@x.com","b@y.com"] }
+// ---------- convenience participant endpoints ----------
 app.post("/participants", (req, res) => {
   try {
     const { meetingId = "default", emails = [] } = req.body;
@@ -467,16 +643,13 @@ app.post("/participants", (req, res) => {
     return res.status(500).json({ error: "failed to add participants" });
   }
 });
-
-// GET /participants/:meetingId
 app.get("/participants/:meetingId", (req, res) => {
   const id = req.params.meetingId || "default";
   const list = participantsByMeeting.get(String(id)) || [];
   res.json({ meetingId: id, participants: list });
 });
 
-// ---------- routes ----------
-// deploy bot
+// ---------- routes (deploy-bot etc) ----------
 app.post("/deploy-bot", async (req, res) => {
   const { meeting_url } = req.body;
   if (!meeting_url) return res.status(400).json({ error: "Meeting URL is required" });
@@ -500,9 +673,7 @@ app.post("/deploy-bot", async (req, res) => {
   }
 });
 
-// ---------- IMPORTANT: Finish meeting endpoint (Option A) ----------
-// Frontend should POST: { meetingId: "default", emails: ["a@x.com","b@x.com"] }
-// The endpoint will store emails and run endMeetingWorkflow using that meetingId.
+// ---------- Finish meeting endpoint ----------
 app.post("/finish-meeting", async (req, res) => {
   try {
     const { meetingId = "default", emails = [] } = req.body || {};
@@ -518,10 +689,7 @@ app.post("/finish-meeting", async (req, res) => {
       console.log("finish-meeting: added emails for", meetingId, existing);
     }
 
-    // Run end workflow (use recallPayload=null, pass meetingId so participantsByMeeting is consulted)
     const result = await endMeetingWorkflow({ recallPayload: null, meetingId });
-
-    // Attempt to return a url where front-end can download the pdf
     const downloadUrl = result.success ? `/download-pdf?ts=${lastDashboardTimestamp || Date.now()}` : null;
 
     if (result.success) {
@@ -556,17 +724,11 @@ app.get("/download-pdf", async (req, res) => {
   }
 });
 
-// webhook for realtime transcription & events
+// webhook (transcription & participant events)
 app.post("/webhook/transcription", async (req, res) => {
-  // Respond quickly to Recall
   res.sendStatus(200);
-
   const payload = req.body || {};
   const evt = payload.event || payload.type || payload.action || payload.event_type || "";
-
-  console.log("WEBHOOK RECEIVED event:", evt);
-  // keep full payload log only when debugging big issues
-  // console.log("FULL PAYLOAD:", JSON.stringify(payload, null, 2));
 
   // participant events
   if (evt === "meeting.participant_joined" || evt === "meeting.participant_left" || evt === "participant.joined" || evt === "participant.left") {
@@ -603,43 +765,25 @@ app.post("/webhook/transcription", async (req, res) => {
   if (evt === "transcript.data" || evt === "transcript") {
     try {
       const d = payload?.data?.data || payload?.data || payload;
-      if (!d) {
-        console.log("No data object in payload; ignoring.");
-        return;
-      }
-
+      if (!d) { console.log("No data object in payload; ignoring."); return; }
       const wordsArray = Array.isArray(d.words) ? d.words : (Array.isArray(d.segments) ? d.segments : null);
-      if (!wordsArray || wordsArray.length === 0) {
-        console.log("No words/segments found; ignoring.");
-        return;
-      }
+      if (!wordsArray || wordsArray.length === 0) { console.log("No words/segments found; ignoring."); return; }
 
-      // Compose text
       const text = wordsArray.map(w => (w.text || "").trim()).filter(Boolean).join(" ").trim();
       if (!text) { console.log("Empty text; ignoring."); return; }
 
-      // Use absolute ISO timestamp if present to avoid NaN in frontend; fall back to now.
       const isoTs = wordsArray[0]?.start_timestamp?.absolute || wordsArray[0]?.start_timestamp?.iso || wordsArray[0]?.start_timestamp || new Date().toISOString();
       const timestampIso = typeof isoTs === "string" ? isoTs : new Date().toISOString();
       const timestampUnix = Math.floor(new Date(timestampIso).getTime() / 1000);
 
       const speaker = (d.participant && (d.participant.name || d.participant.email)) || d.speaker || "Unknown";
 
-      // Persist both into your utils (preferred) and local backup
       try {
         if (typeof addTranscript === "function") {
-          try {
-            // If utils.addTranscript expects only text, call accordingly
-            addTranscript(text);
-          } catch (e) {
-            // fallback try to pass object
-            try { addTranscript({ speaker, text, timestamp: timestampIso, timestamp_unix: timestampUnix }); } catch (e2) { /* ignore */ }
-          }
+          try { addTranscript(text); } catch (e) { try { addTranscript({ speaker, text, timestamp: timestampIso, timestamp_unix: timestampUnix }); } catch (e2) {} }
         }
-      } catch (e) {
-        console.warn("utils.addTranscript potentially failed:", e);
-      }
-      // local backup
+      } catch (e) { console.warn("utils.addTranscript potentially failed:", e); }
+
       addTranscriptLocal({ speaker, text, timestamp: timestampIso, timestamp_unix: timestampUnix });
 
       const transcript = {
@@ -651,16 +795,12 @@ app.post("/webhook/transcription", async (req, res) => {
         is_final: Boolean(d.is_final || d.is_final === undefined)
       };
 
-      // emit to frontend
       io.emit("transcript", transcript);
-
       console.log("Stored transcript:", { speaker: transcript.speaker, text: transcript.text.slice(0, 120), timestamp_unix: transcript.timestamp_unix });
 
-      // If final, generate notes and emit
       if (transcript.is_final && transcript.text) {
         (async () => {
           try {
-            // gather full transcript — prefer utils.getTranscript else local
             let full = "";
             try {
               const gt = await Promise.resolve(getTranscript());
@@ -688,20 +828,24 @@ app.post("/webhook/transcription", async (req, res) => {
   return;
 });
 
-// generate-mom endpoint (frontend uses)
+/* -----------------------
+   MoM generation endpoint
+------------------------*/
 app.post("/generate-mom", async (req, res) => {
   const { transcript } = req.body;
-  if (!transcript || transcript.trim() === "") return res.status(400).json({ error: "Transcript is required to generate MoM." });
+  if (!transcript || transcript.trim() === "") {
+    return res.status(400).json({ error: "Transcript is required to generate MoM." });
+  }
+
   try {
-    const mom = await safeGenerateMom(transcript);
+    const mom = await generateMomWithOllama(transcript);
     return res.json({ mom });
-  } catch (err) {
-    console.error("generate-mom error:", err);
-    return res.status(500).json({ error: "Failed to generate MoM." });
+  } catch (error) {
+    console.error("Error generating MoM:", error.message || error);
+    return res.status(500).json({ error: "Failed to generate MoM. Please try again later." });
   }
 });
 
-// extract-tasks endpoint (frontend uses old extractor)
 app.post("/extract-tasks", async (req, res) => {
   try {
     const { transcript } = req.body;
@@ -716,19 +860,111 @@ app.post("/extract-tasks", async (req, res) => {
   }
 });
 
-// optionally expose Jira/Trello endpoints or others as you had
+let FRONTEND_TASKS = [];
+
+app.post("/api/store-frontend-tasks", (req, res) => {
+  const { tasks } = req.body;
+  if (!Array.isArray(tasks)) {
+    return res.status(400).json({ error: "tasks must be an array" });
+  }
+  FRONTEND_TASKS = tasks;
+  console.log("Stored FRONTEND tasks:", FRONTEND_TASKS.length);
+  res.json({ ok: true });
+});
+
+// ---------- Jira helper (fallback) ----------
+const JIRA_BASE = (process.env.JIRA_DOMAIN && process.env.JIRA_DOMAIN.startsWith("http")) ? process.env.JIRA_DOMAIN.replace(/\/+$/, "") : (process.env.JIRA_DOMAIN ? `https://${process.env.JIRA_DOMAIN.replace(/^https?:\/\//, "")}` : null);
+const JIRA_PROJECT_KEY = process.env.JIRA_PROJECT_KEY || "SCRUM";
+const JIRA_EMAIL = process.env.JIRA_EMAIL || process.env.JIRA_USER;
+const JIRA_API_TOKEN = process.env.JIRA_API_TOKEN;
+
+function jiraAuthHeader() {
+  if (!JIRA_EMAIL || !JIRA_API_TOKEN || !JIRA_BASE) return null;
+  const token = Buffer.from(`${JIRA_EMAIL}:${JIRA_API_TOKEN}`).toString("base64");
+  return `Basic ${token}`;
+}
+
+async function createJiraIssueFallback(task) {
+  if (!JIRA_BASE || !JIRA_PROJECT_KEY || !JIRA_EMAIL || !JIRA_API_TOKEN) {
+    throw new Error("Jira environment variables not set (JIRA_DOMAIN, JIRA_PROJECT_KEY, JIRA_EMAIL, JIRA_API_TOKEN).");
+  }
+
+  const summary = (task.task || "").slice(0, 140) || "Meeting task";
+  const descriptionParts = [];
+  if (task.original_line) descriptionParts.push(`**Source:** ${task.original_line}`);
+  if (task.assigned_to) descriptionParts.push(`**Owner:** ${task.assigned_to}`);
+  if (task.deadline) descriptionParts.push(`**Deadline:** ${task.deadline}`);
+  if (task.labels && Array.isArray(task.labels) && task.labels.length) descriptionParts.push(`**Labels:** ${task.labels.join(", ")}`);
+  const description = (task.description || descriptionParts.join("\n\n") || "").trim();
+
+  const payload = {
+    fields: {
+      project: { key: JIRA_PROJECT_KEY },
+      summary,
+      description: description || "Created from IntelliMeet task.",
+      issuetype: { name: "Task" }
+    }
+  };
+
+  const url = `${JIRA_BASE}/rest/api/3/issue`;
+  const headers = {
+    "Authorization": jiraAuthHeader(),
+    "Accept": "application/json",
+    "Content-Type": "application/json"
+  };
+
+  const resp = await axios.post(url, payload, { headers, timeout: 20000 });
+  return resp.data; // contains key, id, self
+}
+
+// If the user-provided taskExtractor exports saveTaskToJira, prefer it. Otherwise use fallback.
+let externalSaveToJira = null;
+try { externalSaveToJira = require("./utils/taskExtractor").saveTaskToJira; } catch (e) { externalSaveToJira = null; }
+
+// ---------- Jira endpoints ----------
 app.post("/api/save-to-jira", async (req, res) => {
   try {
     const { task } = req.body;
-    if (!task) return res.status(400).json({ error: "Task is required" });
-    if (typeof require("./utils/taskExtractor").saveTaskToJira === "function") {
-      const created = await require("./utils/taskExtractor").saveTaskToJira(task);
-      return res.json({ message: "Created Jira task", task: created });
+    if (!task) return res.status(400).json({ error: "Task is required in body" });
+
+    let result;
+    if (typeof externalSaveToJira === "function") {
+      result = await externalSaveToJira(task);
+      return res.json({ ok: true, created: result });
+    } else {
+      const created = await createJiraIssueFallback(task);
+      return res.json({ ok: true, created });
     }
-    return res.status(501).json({ error: "saveToJira not implemented on server" });
   } catch (err) {
-    console.error("save-to-jira error:", err);
-    res.status(500).json({ error: err.message || String(err) });
+    console.error("save-to-jira error:", err?.response?.data || err?.message || err);
+    return res.status(500).json({ ok: false, error: err?.response?.data || err?.message || String(err) });
+  }
+});
+
+app.post("/api/save-multiple-to-jira", async (req, res) => {
+  try {
+    const { tasks } = req.body;
+    if (!Array.isArray(tasks) || tasks.length === 0) return res.status(400).json({ error: "tasks array required" });
+
+    const results = [];
+    for (const t of tasks) {
+      try {
+        if (typeof externalSaveToJira === "function") {
+          const created = await externalSaveToJira(t);
+          results.push({ ok: true, created });
+        } else {
+          const created = await createJiraIssueFallback(t);
+          results.push({ ok: true, created });
+        }
+      } catch (err) {
+        results.push({ ok: false, error: err?.response?.data || err?.message || String(err) });
+      }
+    }
+
+    return res.json({ ok: true, results });
+  } catch (err) {
+    console.error("save-multiple-to-jira error:", err);
+    return res.status(500).json({ ok: false, error: err?.message || String(err) });
   }
 });
 
@@ -739,4 +975,5 @@ app.get("/health", (req, res) => res.json({ ok: true, time: new Date().toISOStri
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => {
   console.log(`✅ Server running on port ${PORT}`);
+  console.log("Uploaded file path (dev):", UPLOADED_FILE_PATH);
 });

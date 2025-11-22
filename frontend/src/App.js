@@ -20,12 +20,13 @@ const App = () => {
   const [status, setStatus] = useState("");
   const [darkMode, setDarkMode] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
+
   const transcriptContainerRef = useRef(null);
 
-  // 🌟 NEW — Show download button only after dashboard is generated
+  // 🌟 SHOW DOWNLOAD BUTTON ONLY AFTER MEETING FINISHES
   const [dashboardReady, setDashboardReady] = useState(false);
 
-  // DARK MODE
+  /* ---------------- DARK MODE ---------------- */
   useEffect(() => {
     const root = document.documentElement;
     darkMode ? root.classList.add("dark") : root.classList.remove("dark");
@@ -37,9 +38,9 @@ const App = () => {
     if (storedDark) setDarkMode(JSON.parse(storedDark));
   }, []);
 
-  const toggleDarkMode = () => setDarkMode((p) => !p);
+  const toggleDarkMode = () => setDarkMode((prev) => !prev);
 
-  // SOCKET - Receive live transcripts
+  /* ---------------- SOCKET TRANSCRIPTS ---------------- */
   useEffect(() => {
     socket.on("transcript", (newTranscript) => {
       if (!newTranscript?.utterance_id) return;
@@ -48,11 +49,13 @@ const App = () => {
         const i = prev.findIndex(
           (t) => t.utterance_id === newTranscript.utterance_id
         );
+
         if (i !== -1) {
           const updated = [...prev];
           updated[i] = newTranscript;
           return updated;
         }
+
         return [...prev, newTranscript];
       });
     });
@@ -60,13 +63,13 @@ const App = () => {
     return () => socket.off("transcript");
   }, []);
 
-  // Auto scroll
+  /* ---------------- AUTO-SCROLL ---------------- */
   useEffect(() => {
     const div = transcriptContainerRef.current;
     if (div) div.scrollTop = div.scrollHeight;
   }, [transcripts]);
 
-  // Deploy bot
+  /* ---------------- DEPLOY BOT ---------------- */
   const handleDeployBot = async () => {
     if (!meetingUrl) return setStatus("Please enter a valid Meeting URL");
 
@@ -90,12 +93,13 @@ const App = () => {
   const handleCopyBotId = () => {
     const botId = status.replace("Bot deployed with ID: ", "").trim();
     navigator.clipboard.writeText(botId);
+
     setIsCopied(true);
     setTimeout(() => setIsCopied(false), 1200);
   };
 
   return (
-    <div className="relative min-h-screen flex flex-col bg-light-bg text-light-text dark:bg-dark-bg dark:text-dark-text transition-colors duration-300 font-sans">
+    <div className="relative min-h-screen flex flex-col bg-light-bg dark:bg-dark-bg text-light-text dark:text-dark-text transition-colors duration-300 font-sans">
 
       <Navbar toggleDarkMode={toggleDarkMode} darkMode={darkMode} />
 
@@ -130,6 +134,7 @@ const App = () => {
 
           {/* LEFT SIDE */}
           <div className="lg:col-span-2 flex flex-col gap-8">
+
             <div className="bg-light-card dark:bg-dark-card p-6 rounded-lg shadow-md">
               <TranscriptSection
                 transcripts={transcripts}
@@ -142,25 +147,29 @@ const App = () => {
             </div>
 
             <div className="bg-light-card dark:bg-dark-card p-6 rounded-lg shadow-md">
-              <TaskExtractor />
+              {/* PASS TRANSCRIPTS TO NEW ENHANCED EXTRACTOR */}
+              <TaskExtractor transcripts={transcripts} />
             </div>
+
           </div>
 
           {/* RIGHT SIDE */}
           <div className="lg:col-span-1 flex flex-col gap-8">
+
             <div className="bg-light-card dark:bg-dark-card p-6 rounded-lg shadow-md">
               <MeetingAnalytics transcript={transcripts} />
             </div>
 
+            {/* MoM Section - Always visible at the bottom right */}
             <div className="bg-light-card dark:bg-dark-card p-6 rounded-lg shadow-md">
-              <MeetingSummary />
+              <MeetingSummary /> {/* Updated component */}
             </div>
-          </div>
 
+          </div>
         </div>
       </div>
 
-      {/* ✅ SHOW DOWNLOAD BUTTON ONLY WHEN READY */}
+      {/* ONLY AFTER DASHBOARD IS GENERATED */}
       {dashboardReady && (
         <div className="flex justify-center mb-6">
           <a
@@ -174,7 +183,7 @@ const App = () => {
         </div>
       )}
 
-      {/* FINISH MEETING */}
+      {/* FINISH BUTTON */}
       <div className="flex justify-center mt-6 mb-10">
         <FinishMeetingButton onDashboardGenerated={() => setDashboardReady(true)} />
       </div>
