@@ -1,7 +1,11 @@
 import React, { useState } from "react";
 import axios from "axios";
 
-export default function FinishMeetingButton({ onDashboardGenerated, tasks }) {
+export default function FinishMeetingButton({
+  onDashboardGenerated,
+  tasks,
+  transcripts,
+}) {
   // 👆 IMPORTANT: receive tasks from parent (App.js)
 
   const [showPopup, setShowPopup] = useState(false);
@@ -48,7 +52,12 @@ export default function FinishMeetingButton({ onDashboardGenerated, tasks }) {
       });
 
       // 3️⃣ FINISH MEETING → TRIGGER DASHBOARD + EMAIL
-      const response = await axios.post("http://localhost:3001/finish-meeting");
+      const response = await axios.post(
+        "http://localhost:3001/finish-meeting",
+        {
+          transcript: transcripts, // 👈 PASS TRANSCRIPT
+        }
+      );
 
       if (response.data?.ok) {
         setSuccessMsg("Dashboard generated & emails sent!");

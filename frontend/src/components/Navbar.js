@@ -6,9 +6,16 @@ const Navbar = ({ darkMode, toggleDarkMode }) => {
     <nav className="shadow-sm bg-light-card dark:bg-dark-card transition-colors duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
-          <div className="flex items-center">
-            <a href="/" className="text-2xl font-bold text-light-text dark:text-dark-text">
-              IntelliMeet
+          <div className="flex items-center space-x-2">
+            <a href="/" className="flex items-center space-x-2">
+              <img 
+                src="logo1.png" 
+                alt="IntelliMeet Logo" 
+                className="h-8 w-8"
+              />
+              <span className="text-2xl font-bold text-light-text dark:text-dark-text">
+                IntelliMeet
+              </span>
             </a>
           </div>
           <div className="flex items-center">

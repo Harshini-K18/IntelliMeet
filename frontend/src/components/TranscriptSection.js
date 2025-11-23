@@ -40,7 +40,7 @@ export default function TranscriptSection({
     <div>
       {/* HEADER */}
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-medium text-light-text dark:text-dark-text">
+        <h2 className="text-2xl font-bold text-black dark:text-[#e790adff]">
           Live Transcript
         </h2>
 
@@ -48,7 +48,7 @@ export default function TranscriptSection({
           <button
             onClick={() => handleDownloadTranscript(transcripts)}
             disabled={transcripts.length === 0}
-            className="flex items-center text-black dark:text-black disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-80 transition duration-200 font-medium"
+            className="flex items-center text-black dark:text-white disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-80 transition duration-200 font-medium"
           >
             <span className="mr-2">Download Transcript</span>
             <ArrowDownTrayIcon className="h-5 w-5" />
@@ -59,7 +59,7 @@ export default function TranscriptSection({
       {/* TRANSCRIPT BOX */}
       <div
         ref={transcriptContainerRef}
-        className="bg-light-bg dark:bg-dark-bg shadow-inner rounded-lg p-4 max-h-96 overflow-y-auto"
+        className="bg-light-bg dark:bg-gray-900 shadow-inner rounded-lg p-4 max-h-96 overflow-y-auto"
       >
         {transcripts.length === 0 ? (
           <p className="text-light-text dark:text-dark-text text-center">
@@ -69,7 +69,7 @@ export default function TranscriptSection({
           transcripts.map((t, index) => (
             <div
               key={index}
-              className="border-b border-light-accent dark:border-dark-accent last:border-b-0 py-2 px-4 my-2 bg-light-accent dark:bg-dark-card text-black dark:text-dark-text whitespace-pre-wrap rounded-lg break-words w-fit max-w-[85%] mr-auto"
+              className="border-b border-light-accent dark:border-dark-accent last:border-b-0 py-2 px-4 my-2 bg-light-accent dark:bg-dark-accent text-black dark:text-black whitespace-pre-wrap rounded-lg break-words w-fit max-w-[85%] mr-auto"
             >
               <span className="font-semibold">
                 [{formatTimestamp(t.timestamp)}] {t.speaker}:{" "}

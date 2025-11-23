@@ -131,25 +131,24 @@ const MeetingSummary = () => {
     <div >
       <div className="max-w-5xl mx-auto">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-light-highlight mb-2">Smart Meeting Minutes Generator</h1>
-          
+          <h1 className="text-2xl font-bold text-black dark:text-[#e790adff] mb-2">Smart Meeting Minutes Generator</h1>
         </div>
         
-        <div className="bg-light-card/50 backdrop-blur-sm rounded-xl p-8 mb-8 shadow-lg border border-light-accent/20">
-          <label htmlFor="transcript" className="block text-lg font-semibold text-light-text mb-4 flex items-center">
+        <div className="bg-light-card/50 dark:bg-gray-900 backdrop-blur-sm rounded-xl p-8 mb-8 shadow-lg border border-light-accent/20 dark:border-gray-700">
+          <label htmlFor="transcript" className="block text-lg font-semibold text-light-text dark:text-[#e790adff] mb-4 flex items-center">
           
             Meeting Transcript
           </label>
           <div className="relative">
             <textarea
               id="transcript"
-              className="w-full px-4 py-3 bg-white/80 border border-light-accent/30 rounded-lg shadow-inner focus:ring-2 focus:ring-light-highlight/50 focus:border-light-highlight transition-all duration-200 text-light-text placeholder-light-text/50"
+              className="w-full px-4 py-3 bg-[#FCF9EA] dark:bg-gray-900 border border-light-accent/30 dark:border-gray-700 rounded-lg shadow-inner focus:ring-2 focus:ring-light-highlight/50 dark:focus:ring-[#e790adff]/50 focus:border-light-highlight dark:focus:border-[#e790adff] transition-all duration-200 text-light-text dark:text-gray-200 placeholder-light-text/50 dark:placeholder-gray-400"
               rows="10"
               placeholder="Paste the meeting transcript here..."
               value={transcript}
               onChange={(e) => setTranscript(e.target.value)}
             />
-            <div className="absolute -bottom-2 right-3 bg-white px-2 text-xs text-light-text/50">
+            <div className="absolute -bottom-2 right-3 bg-white dark:bg-gray-800 px-2 text-xs text-light-text/50 dark:text-gray-300 rounded">
               {transcript.length} characters
             </div>
           </div>
@@ -158,7 +157,7 @@ const MeetingSummary = () => {
             <div className="flex space-x-3">
               <button
                 onClick={() => setTranscript('')}
-                className="px-4 py-2 text-sm font-medium text-light-text/70 hover:text-[#f69d9bf8] transition-colors"
+                className="px-4 py-2 text-sm font-medium text-light-text/70 hover:text-[#f69d9bf8] dark:text-gray-300 dark:hover:text-[#fd9d9dff] transition-colors"
               >
                 Clear
               </button>
@@ -195,35 +194,24 @@ const MeetingSummary = () => {
         </div>
 
         {mom && (
-          <div className="bg-white/80 backdrop-blur-sm rounded-xl p-8 shadow-lg border border-light-accent/20 transition-all duration-300 transform hover:shadow-xl">
+          <div className="bg-[#FCF9EA] dark:bg-gray-900 backdrop-blur-sm rounded-xl p-8 shadow-lg border border-light-accent/20 dark:border-gray-700 transition-all duration-300 transform hover:shadow-xl">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold text-light-highlight flex items-center">
+              <h2 className="text-2xl font-bold text-light-highlight dark:text-[#e790adff] flex items-center">
                 
                 MOM
               </h2>
-              <div className="flex space-x-3">
-                <button 
-                  onClick={() => navigator.clipboard.writeText(mom.replace(/<[^>]*>?/gm, ''))}
-                  className="p-2 text-light-text/60 hover:text-light-highlight transition-colors"
-                  title="Copy to clipboard"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
-                  </svg>
-                </button>
-                <button 
-                  onClick={handleFinishMeeting}
-                  className="px-4 py-2 bg-[#f69d9b] text-white rounded-lg text-sm font-medium flex items-center hover:bg-[#f69d9b]/90 transition-colors"
-                >
-                  <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                  Export
-                </button>
-              </div>
+              <button 
+                onClick={() => navigator.clipboard.writeText(mom.replace(/<[^>]*>?/gm, ''))}
+                className="p-2 text-light-text/60 hover:text-light-highlight dark:text-gray-300 dark:hover:text-white transition-colors"
+                title="Copy to clipboard"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                </svg>
+              </button>
             </div>
             <div 
-              className="prose max-w-none text-light-text/90"
+              className="prose max-w-none text-light-text/90 dark:text-gray-200"
               dangerouslySetInnerHTML={{ __html: mom }} 
             />
           </div>
@@ -244,6 +232,10 @@ const MeetingSummary = () => {
           padding-bottom: 0.4em;
           position: relative;
         }
+        .dark .prose h2 {
+          color: #e790adff;
+          border-bottom-color: #e790ad80;
+        }
         .prose h2:before {
           content: '';
           position: absolute;
@@ -262,6 +254,9 @@ const MeetingSummary = () => {
           display: flex;
           align-items: center;
         }
+        .dark .prose h3 {
+          color: #ffffff;
+        }
         .prose h3:before {
           content: '•';
           color: #d873cb;
@@ -272,6 +267,7 @@ const MeetingSummary = () => {
         .prose p {
           margin-bottom: 1.2em;
           line-height: 1.7;
+          color: inherit;
         }
         .prose ul {
           list-style-type: none;
@@ -296,6 +292,10 @@ const MeetingSummary = () => {
           font-weight: 500;
           border-bottom: 1px dashed #d873cb;
           transition: all 0.2s ease;
+        }
+        .dark .prose a {
+          color: #e790adff;
+          border-bottom-color: #e790adff;
         }
         .prose a:hover {
           color: #fbb0b0;

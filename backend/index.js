@@ -496,7 +496,7 @@ function createDashboardHTML(data, charts = {}) {
       
       table tr:last-child td {
         border-bottom: none;
-      }
+}
       
       .badge { 
         background: #e0f2fe; 
@@ -754,39 +754,68 @@ async function sendDashboardEmail({ pdfBuffer, htmlBody, subject = "IntelliMeet 
 
 // ---------- analytics ----------
 function computeAnalytics(transcriptArray) {
-  const analytics = { participantCount: 0, messageCount: 0, duration: null, topSpeaker: null };
-  if (!Array.isArray(transcriptArray) || transcriptArray.length === 0) return analytics;
+  const analytics = {
+    participantCount: 0,
+    messageCount: 0,
+    duration: null,
+    topSpeaker: null,
+  };
+  if (!Array.isArray(transcriptArray) || transcriptArray.length === 0)
+    return analytics;
 
   const counts = {};
-  let firstTs = Infinity, lastTs = -Infinity;
+  let firstTs = Infinity,
+    lastTs = -Infinity;
   transcriptArray.forEach((t) => {
     const speaker = t.speaker || "Unknown";
     counts[speaker] = (counts[speaker] || 0) + 1;
     analytics.messageCount++;
     let ts = Date.parse(t.timestamp);
-    if (isNaN(ts)) ts = Number(t.timestamp) || (t.timestamp_unix ? t.timestamp_unix * 1000 : Date.now());
+    if (isNaN(ts))
+      ts =
+        Number(t.timestamp) ||
+        (t.timestamp_unix ? t.timestamp_unix * 1000 : Date.now());
     if (ts < firstTs) firstTs = ts;
     if (ts > lastTs) lastTs = ts;
   });
   analytics.participantCount = Object.keys(counts).length;
-  const top = Object.entries(counts).sort((a,b) => b[1]-a[1])[0];
+  const top = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
   analytics.topSpeaker = top ? top[0] : null;
-  if (firstTs < Infinity && lastTs > -Infinity) analytics.duration = Math.round((lastTs - firstTs) / 60000);
+  if (firstTs < Infinity && lastTs > -Infinity) {
+    const durationMs = lastTs - firstTs;
+    analytics.duration = Math.round(durationMs / 60000); // Convert to minutes
+    console.log('Calculated duration:', { 
+      firstTs: new Date(firstTs).toISOString(), 
+      lastTs: new Date(lastTs).toISOString(), 
+      durationMs, 
+      durationMinutes: analytics.duration 
+    });
+  } else {
+    console.warn('Could not calculate duration - invalid timestamps:', { firstTs, lastTs });
+  }
   analytics.rawCounts = counts;
   return analytics;
 }
 
 // ---------- endMeetingWorkflow ----------
-async function endMeetingWorkflow({ recallPayload = null, meetingId = null } = {}) {
+async function endMeetingWorkflow({
+  recallPayload = null,
+  meetingId = null,
+  transcriptFromRequest = [],
+} = {}) {
   try {
     console.log("Starting endMeetingWorkflow for meetingId:", meetingId);
 
     // get transcript
     let rawTranscript;
-    try {
-      rawTranscript = await Promise.resolve(getTranscript());
-    } catch (e) {
-      rawTranscript = getTranscriptLocal();
+    if (transcriptFromRequest && transcriptFromRequest.length > 0) {
+      rawTranscript = transcriptFromRequest;
+    } else {
+      try {
+        rawTranscript = await Promise.resolve(getTranscript());
+      } catch (e) {
+        rawTranscript = getTranscriptLocal();
+      }
     }
 
     let transcriptArray = [];
@@ -953,7 +982,8 @@ app.post("/deploy-bot", async (req, res) => {
 // ---------- Finish meeting endpoint ----------
 app.post("/finish-meeting", async (req, res) => {
   try {
-    const { meetingId = "default", emails = [] } = req.body || {};
+    const { meetingId = "default", emails = [], transcript = [] } =
+      req.body || {};
 
     // Add emails if provided
     if (Array.isArray(emails) && emails.length) {
@@ -966,8 +996,14 @@ app.post("/finish-meeting", async (req, res) => {
       console.log("finish-meeting: added emails for", meetingId, existing);
     }
 
-    const result = await endMeetingWorkflow({ recallPayload: null, meetingId });
-    const downloadUrl = result.success ? `/download-pdf?ts=${lastDashboardTimestamp || Date.now()}` : null;
+    const result = await endMeetingWorkflow({
+      recallPayload: null,
+      meetingId,
+      transcriptFromRequest: transcript,
+    });
+    const downloadUrl = result.success
+      ? `/download-pdf?ts=${lastDashboardTimestamp || Date.now()}`
+      : null;
 
     if (result.success) {
       return res.json({ ok: true, message: "Dashboard generated and emails (if any) sent", downloadUrl, dashboardData: result.dashboardData, emailedTo: result.emailed || [] });
@@ -1049,9 +1085,38 @@ app.post("/webhook/transcription", async (req, res) => {
       const text = wordsArray.map(w => (w.text || "").trim()).filter(Boolean).join(" ").trim();
       if (!text) { console.log("Empty text; ignoring."); return; }
 
-      const isoTs = wordsArray[0]?.start_timestamp?.absolute || wordsArray[0]?.start_timestamp?.iso || wordsArray[0]?.start_timestamp || new Date().toISOString();
-      const timestampIso = typeof isoTs === "string" ? isoTs : new Date().toISOString();
-      const timestampUnix = Math.floor(new Date(timestampIso).getTime() / 1000);
+      // Try to get the best available timestamp
+      let isoTs = wordsArray[0]?.start_timestamp?.absolute || 
+                 wordsArray[0]?.start_timestamp?.iso || 
+                 wordsArray[0]?.start_timestamp || 
+                 wordsArray[0]?.timestamp || 
+                 new Date().toISOString();
+      
+      // Ensure we have a valid timestamp
+      let timestampDate;
+      if (typeof isoTs === 'string') {
+        timestampDate = new Date(isoTs);
+        // If the date is invalid, use current time
+        if (isNaN(timestampDate.getTime())) {
+          console.warn('Invalid timestamp, using current time:', isoTs);
+          timestampDate = new Date();
+        }
+      } else if (typeof isoTs === 'number') {
+        // Handle Unix timestamp (in seconds or milliseconds)
+        timestampDate = new Date(isoTs * (isoTs > 1e12 ? 1 : 1000));
+      } else {
+        timestampDate = new Date();
+      }
+      
+      const timestampIso = timestampDate.toISOString();
+      const timestampUnix = Math.floor(timestampDate.getTime() / 1000);
+      
+      console.log('Processed timestamp:', { 
+        input: isoTs, 
+        iso: timestampIso, 
+        unix: timestampUnix,
+        speaker: d.participant?.name || d.speaker || 'Unknown'
+      });
 
       const speaker = (d.participant && (d.participant.name || d.participant.email)) || d.speaker || "Unknown";
 
@@ -1094,7 +1159,6 @@ app.post("/webhook/transcription", async (req, res) => {
           }
         })();
       }
-
     } catch (err) {
       console.error("transcript handler error:", err);
     }

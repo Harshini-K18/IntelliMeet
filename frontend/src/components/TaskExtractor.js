@@ -208,58 +208,57 @@ const TaskExtractor = () => {
   };
 
   return (
-    <div>
-      <h2 className="text-xl font-bold mb-4">Task Extractor</h2>
-      <textarea
-        rows={10}
-        value={pastedTranscript}
-        onChange={(e) => setPastedTranscript(e.target.value)}
-        placeholder="Paste transcript or JSON here..."
-        className="w-full p-2 border rounded mb-3"
-      />
-      <div className="flex gap-3 mb-4">
-        <button 
-          disabled={isExtracting || !pastedTranscript.trim()} 
-          onClick={extractTasks} 
-          className="px-4 py-2 bg-[#f69d9b] text-white rounded hover:bg-[#f69d9b]/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {isExtracting ? "Extracting..." : "Extract Tasks"}
-        </button>
-        <button 
-          onClick={() => { setPastedTranscript(""); setTasks([]); setSaveState({}); setError(null); }} 
-          className="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 transition-colors"
-        >
-          Clear
-        </button>
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-2xl font-bold text-black dark:text-[#e790adff] mb-3">Extract Action Items</h2>
+        <div className="relative">
+          <textarea
+            value={pastedTranscript}
+            onChange={(e) => setPastedTranscript(e.target.value)}
+            placeholder="Paste meeting transcript or JSON here..."
+            className="w-full h-40 p-3 border rounded-lg focus:ring-2 focus:ring-light-highlight/50 dark:focus:ring-[#e790adff]/50 focus:border-light-highlight dark:focus:border-[#e790adff] transition-all bg-[#FCF9EA] dark:bg-gray-900 border-light-accent/30 dark:border-gray-700 text-light-text dark:text-gray-100 placeholder-light-text/50 dark:placeholder-gray-400"
+          />
+          <button
+            disabled={isExtracting || !pastedTranscript.trim()}
+            onClick={extractTasks}
+            className="px-4 py-2 bg-[#f69d9b] text-white rounded hover:bg-[#f69d9b]/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isExtracting ? "Extracting..." : "Extract Tasks"}
+          </button>
+        </div>
       </div>
 
       {error && <div className="text-red-600 mb-3">{error}</div>}
 
       <div className="space-y-3">
-        {tasks.map((t, idx) => (
-          <div key={t.task_id || idx} className="p-3 border rounded bg-gray-50 flex justify-between">
-            <div style={{flex:1}}>
-              <div className="font-semibold">{t.task}</div>
-              <div className="text-sm text-gray-700">Owner: {t.assigned_to}</div>
-              <div className="text-sm text-gray-700">Deadline: {t.deadline || "Not set"}</div>
-              {t.original_line && <div className="text-sm text-gray-500 italic">Source: "{t.original_line}"</div>}
-            </div>
-            <div className="flex flex-col items-end gap-2 ml-3">
-              {renderSaveStatus(t)}
-              <div className="flex gap-2">
-                <button 
-                  onClick={() => saveToJira(t)} 
-                  disabled={saveState[t.task_id]?.saving} 
-                  className="px-3 py-1 bg-[#f69d9b] text-white rounded hover:bg-[#f69d9b]/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Save to Jira
-                </button>
-                <button 
-                  onClick={() => navigator.clipboard.writeText(JSON.stringify(t, null, 2))} 
-                  className="px-3 py-1 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 transition-colors"
-                >
-                  Copy
-                </button>
+        {tasks.map((task, index) => (
+          <div key={index} className="p-4 border rounded-lg bg-white dark:bg-gray-900 border-light-accent/30 dark:border-gray-700 shadow-sm">
+            <div className="flex justify-between items-start">
+              <div className="flex-1">
+                <div className="font-semibold text-[#fd9d9dff]">{task.task}</div>
+                <div className="text-sm text-gray-700 dark:text-gray-200">Owner: {task.assigned_to}</div>
+                <div className="text-sm text-gray-700 dark:text-gray-200">Deadline: {task.deadline || "Not set"}</div>
+                {task.original_line && (
+                  <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">Source: "{task.original_line}"</div>
+                )}
+              </div>
+              <div className="ml-4 flex flex-col items-end">
+                {renderSaveStatus(task)}
+                <div className="mt-2 flex gap-2">
+                  <button
+                    onClick={() => saveToJira(task)}
+                    disabled={saveState[task.task_id]?.saving}
+                    className="px-3 py-1 text-sm bg-light-accent/20 dark:bg-dark-accent text-light-accent dark:text-white rounded hover:bg-light-accent/30 dark:hover:bg-dark-accent/90 transition-colors disabled:opacity-50"
+                  >
+                    Save to Jira
+                  </button>
+                  <button
+                    onClick={() => navigator.clipboard.writeText(JSON.stringify(task, null, 2))}
+                    className="px-3 py-1 text-sm bg-gray-200 text-gray-800 rounded hover:bg-gray-300 transition-colors dark:bg-gray-200 dark:text-gray-800 dark:hover:bg-gray-300"
+                  >
+                    Copy
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -270,13 +269,13 @@ const TaskExtractor = () => {
         <div className="mt-4 flex flex-wrap gap-2">
           <button 
             onClick={saveAllToJira} 
-            className="px-4 py-2 bg-[#f69d9b] text-white rounded hover:bg-[#f69d9b]/90 transition-colors"
+            className="px-4 py-2 bg-light-accent dark:bg-dark-accent text-white rounded hover:opacity-90 transition-colors"
           >
             Save All to Jira
           </button>
           <button 
             onClick={saveTasksToDashboard} 
-            className="px-4 py-2 bg-[#f69d9b]/80 text-white rounded hover:bg-[#f69d9b] transition-colors"
+            className="px-4 py-2 bg-light-accent/80 dark:bg-dark-accent/80 text-white rounded hover:opacity-90 transition-colors"
           >
             Save to Dashboard
           </button>

@@ -185,7 +185,10 @@ const App = () => {
 
       {/* FINISH BUTTON */}
       <div className="flex justify-center mt-6 mb-10">
-        <FinishMeetingButton onDashboardGenerated={() => setDashboardReady(true)} />
+        <FinishMeetingButton
+          onDashboardGenerated={() => setDashboardReady(true)}
+          transcripts={transcripts}
+        />
       </div>
 
       <Footer />

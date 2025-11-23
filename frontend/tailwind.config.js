@@ -18,11 +18,11 @@ module.exports = {
         'light-highlight': '#f69d9bf8',
 
         // Dark Mode Palette
-        'dark-bg': '#020202ff',
-        'dark-card': '#25155dff',
-        'dark-accent': '#e790adff',
-        'dark-text': '#C8ACD6',
-        'dark-highlight': '#ad4172ff',
+        'dark-bg': '#111827',
+        'dark-card': '#353577ff',
+        'dark-accent': '#fd9d9dff',
+        'dark-text': '#ffffffff',
+        'dark-highlight': '#fd9d9dff',
 
         // Shared colors
         'danger': '#BF616A',

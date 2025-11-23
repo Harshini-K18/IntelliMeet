@@ -48,7 +48,7 @@ const MeetingAnalytics = ({ transcript }) => {
 
   return (
     <div className="bg-light-card dark:bg-dark-card p-4 rounded-lg shadow-md">
-      <h2 className="text-xl font-bold mb-4 text-light-text dark:text-dark-text">
+      <h2 className="text-2xl font-bold mb-4 text-black dark:text-[#e790adff]">
         Interaction Levels
       </h2>
 
