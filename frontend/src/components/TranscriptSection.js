@@ -48,7 +48,7 @@ export default function TranscriptSection({
           <button
             onClick={() => handleDownloadTranscript(transcripts)}
             disabled={transcripts.length === 0}
-            className="flex items-center text-blue-600 dark:text-blue-400 disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-80 transition duration-200"
+            className="flex items-center text-black dark:text-black disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-80 transition duration-200 font-medium"
           >
             <span className="mr-2">Download Transcript</span>
             <ArrowDownTrayIcon className="h-5 w-5" />
@@ -69,7 +69,7 @@ export default function TranscriptSection({
           transcripts.map((t, index) => (
             <div
               key={index}
-              className="border-b border-light-accent dark:border-dark-accent last:border-b-0 py-2 px-4 my-2 bg-light-card dark:bg-dark-card text-light-text dark:text-dark-text whitespace-pre-wrap rounded-lg break-words w-fit max-w-[85%] mr-auto"
+              className="border-b border-light-accent dark:border-dark-accent last:border-b-0 py-2 px-4 my-2 bg-light-accent dark:bg-dark-card text-black dark:text-dark-text whitespace-pre-wrap rounded-lg break-words w-fit max-w-[85%] mr-auto"
             >
               <span className="font-semibold">
                 [{formatTimestamp(t.timestamp)}] {t.speaker}:{" "}
@@ -87,7 +87,7 @@ export default function TranscriptSection({
         <button
           onClick={handleCopyTranscripts}
           disabled={transcripts.length === 0}
-          className="py-2 px-4 border border-blue-600 text-blue-600 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-blue-600 hover:text-white transition duration-200"
+          className="py-2 px-4 bg-[#f69d9b] text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#f69d9b]/90 transition duration-200 font-medium"
         >
           Copy Transcript
         </button>
@@ -96,7 +96,7 @@ export default function TranscriptSection({
         <button
           onClick={handleClearTranscript}
           disabled={transcripts.length === 0}
-          className="py-2 px-4 border border-blue-600 text-blue-600 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-blue-600 hover:text-white transition duration-200"
+          className="py-2 px-4 bg-[#f69d9b] text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#f69d9b]/90 transition duration-200 font-medium"
         >
           Clear Transcript
         </button>

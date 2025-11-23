@@ -176,7 +176,7 @@ const App = () => {
             href="http://localhost:3001/download-pdf"
             target="_blank"
             rel="noopener noreferrer"
-            className="px-5 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+            className="px-5 py-2 bg-light-accent text-white rounded-lg hover:bg-light-accent/90 transition"
           >
             Download Dashboard PDF
           </a>
