@@ -26,6 +26,18 @@ module.exports = {
 
         // Shared colors
         'danger': '#BF616A',
+        extend: {
+  // ... existing config
+  animation: {
+    'fade-in': 'fadeIn 1s ease-in-out',
+  },
+  keyframes: {
+    fadeIn: {
+      '0%': { opacity: '0', transform: 'translateY(10px)' },
+      '100%': { opacity: '1', transform: 'translateY(0)' },
+    },
+  },
+}
       },
       boxShadow: {
         'lg': '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
@@ -34,6 +46,7 @@ module.exports = {
       borderRadius: {
         'xl': '1rem',
       }
+      
     },
   },
   plugins: [],

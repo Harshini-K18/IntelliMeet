@@ -11,6 +11,7 @@ import MeetingAnalytics from "./components/MeetingAnalytics";
 import MeetingSummary from "./components/MeetingSummary";
 import TaskExtractor from "./components/TaskExtractor";
 import FinishMeetingButton from "./FinishMeetingButton";
+import BackgroundPattern from './components/BackgroundPattern';
 
 const socket = io("http://localhost:3001");
 
@@ -100,20 +101,48 @@ const App = () => {
 
   return (
     <div className="relative min-h-screen flex flex-col bg-light-bg dark:bg-dark-bg text-light-text dark:text-dark-text transition-colors duration-300 font-sans">
-
+      <BackgroundPattern />
       <Navbar toggleDarkMode={toggleDarkMode} darkMode={darkMode} />
 
       <div className="max-w-7xl mx-auto py-10 px-4 sm:px-6 lg:px-8 flex-grow">
 
         {/* HEADER */}
-        <div className="text-center mb-10">
-          <h1 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-light-accent to-light-text dark:from-dark-accent dark:to-white">
-            IntelliMeet - Meetings Made Seamless with AI
-          </h1>
-          <h6 className="text-sm font-normal">
-            Supports Google Meet, Zoom, and Microsoft Teams
-          </h6>
-        </div>
+        <div className="text-center mb-10 relative">
+          {/* Decorative background elements */}
+          <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-64 h-64 bg-light-highlight/10 dark:bg-pink-500/5 rounded-full filter blur-3xl -z-10"></div>
+  {/* Decorative background elements */}
+  <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-64 h-64 bg-light-highlight/10 dark:bg-pink-500/5 rounded-full filter blur-3xl -z-10"></div>
+  
+  {/* Main heading with gradient */}
+  <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4">
+    <span className="bg-gradient-to-r from-light-highlight via-light-accent to-pink-500 dark:from-pink-400 dark:via-pink-500 dark:to-pink-600 bg-clip-text text-transparent">
+      IntelliMeet
+    </span>
+  </h1>
+  
+  {/* Subheading with subtle underline */}
+  <div className="relative inline-block">
+    <p className="text-xl md:text-2xl text-light-text/90 dark:text-gray-200 font-medium">
+      Meetings Made Seamless With AI
+    </p>
+    <div className="absolute bottom-0 left-0 w-full h-0.5 bg-gradient-to-r from-transparent via-light-accent/70 to-transparent dark:via-pink-400/70 mt-1"></div>
+  </div>
+
+  {/* Supported platforms - simplified */}
+  <div className="mt-6 flex items-center justify-center space-x-4">
+    <span className="text-sm font-medium text-light-text/60 dark:text-gray-500">SUPPORTS</span>
+    <div className="flex items-center space-x-3">
+      {['Google Meet', 'Zoom', 'Teams'].map((platform) => (
+        <span 
+          key={platform}
+          className="px-3 py-1 text-xs font-medium rounded-full bg-light-card/80 dark:bg-gray-800/80 text-light-text/80 dark:text-gray-300 border border-light-accent/20 dark:border-gray-700"
+        >
+          {platform}
+        </span>
+      ))}
+    </div>
+  </div>
+</div>
 
         {/* INPUT + STATUS */}
         <div className="bg-light-card dark:bg-dark-card p-6 rounded-lg shadow-md mb-8">
