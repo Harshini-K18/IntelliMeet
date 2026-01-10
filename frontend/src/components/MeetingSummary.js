@@ -218,7 +218,7 @@ const MeetingSummary = () => {
         )}
       </div>
 
-      <style jsx global>{`
+      <style>{`
         .prose {
           color: inherit;
         }

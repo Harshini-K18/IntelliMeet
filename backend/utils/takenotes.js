@@ -11,7 +11,9 @@ function normalizeNameSplits(text) {
   text = text.replace(/\bHarsh\s*ini\s*K\b/g, "Harshini K");
 
   // 2) Heuristic: join short lowercase fragments inside names like "Harsh ini K" -> "Harshini K"
-  text = text.replace(/\b([A-Z][a-z]{2,})\s+([a-z]{1,3})\s+([A-Z][a-z]+)/g, "$1$2 $3");
+  // Avoid joining common small words (of, and, the, etc.) between capitalized words which can
+  // incorrectly transform phrases like "Minutes of Meeting" -> "Minutesof Meeting".
+  text = text.replace(/\b([A-Z][a-z]{2,})\s+((?!(?:of|and|the|in|to|for|on|with|by|at|from))[a-z]{1,3})\s+([A-Z][a-z]+)/g, "$1$2 $3");
 
   // 3) Collapse accidental repeated spaces/newlines and trim
   text = text.replace(/[ \t]{2,}/g, " ").replace(/\n{3,}/g, "\n\n").trim();
