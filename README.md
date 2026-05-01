@@ -17,21 +17,13 @@ IntelliMeet is an AI meeting assistant that joins online meetings, captures live
 
 ## Screenshots
 
-Add your images inside `docs/images/`, then use the examples below.
-
 ```md
-![Home Dashboard](docs/images/home-dashboard.png)
-![Live Transcript](docs/images/live-transcript.png)
+![Home Dashboard]()
+![Live Transcript]()
 ![Meeting PDF](docs/images/meeting-pdf.png)
 ```
+<img width="1917" height="867" alt="Screenshot 2025-12-01 170447" src="https://github.com/user-attachments/assets/771221fa-9f7c-49af-b465-1da83c6cb37e" />
 
-Example layout after you upload screenshots:
-
-<!--
-![IntelliMeet Dashboard](docs/images/home-dashboard.png)
-![Action Items](docs/images/action-items.png)
-![Analytics](docs/images/analytics.png)
--->
 
 ## Tech Stack
 
@@ -191,31 +183,6 @@ http://localhost:3000
 | `POST` | `/api/save-to-jira` | Save one task to Jira |
 | `POST` | `/api/save-multiple-to-jira` | Save multiple tasks to Jira |
 
-## Uploading Images to GitHub
-
-1. Create image files such as:
-
-```text
-docs/images/home-dashboard.png
-docs/images/live-transcript.png
-docs/images/action-items.png
-docs/images/analytics.png
-docs/images/meeting-pdf.png
-```
-
-2. Add them to Git:
-
-```bash
-git add docs/images README.md
-git commit -m "Add project README and screenshots"
-git push
-```
-
-3. Reference them in the README:
-
-```md
-![Dashboard](docs/images/home-dashboard.png)
-```
 
 ## Notes
 
