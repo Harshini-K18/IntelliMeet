@@ -201,6 +201,3 @@ http://localhost:3000
 - Email delivery requires valid SMTP credentials.
 - Jira integration requires Jira Cloud API credentials and a valid project key.
 
-## License
-
-This project is open for learning and development. Add a license file before publishing if you want to define usage rights clearly.
