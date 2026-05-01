@@ -114,7 +114,7 @@ REACT_APP_BACKEND_URL=http://localhost:3001
 Clone the repository:
 
 ```bash
-git clone [https://github.com/your-username/intellimeet.git](https://github.com/Harshini-K18/IntelliMeet.git)
+git clone https://github.com/Harshini-K18/IntelliMeet.git
 cd intellimeet
 ```
 
