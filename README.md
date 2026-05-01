@@ -27,6 +27,12 @@ IntelliMeet is an AI meeting assistant that joins online meetings, captures live
 <br>
 
 <img width="1897" height="871" alt="Screenshot 2025-11-23 143413" src="https://github.com/user-attachments/assets/6178217c-0ac2-48fd-a019-46e0ec9bc74b" />
+<br>
+<img width="458" height="618" alt="Screenshot 2025-12-01 170916" src="https://github.com/user-attachments/assets/cd094648-214f-4185-9ed5-450a166e2f5e" />
+<br>
+<img width="461" height="325" alt="Screenshot 2025-11-23 143706" src="https://github.com/user-attachments/assets/6a12710b-e6b8-42da-a5d4-545af9034573" />
+
+
 
 
 
